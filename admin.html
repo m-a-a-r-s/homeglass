@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Homeglass — Remote Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0a; --card:#15170f; --paper:#F5F2EA; --dim:rgba(245,242,234,.62);
+    --border:rgba(245,242,234,.18); --accent:#9FB89A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--paper);
+    font-family:'Inter', sans-serif; display:flex; justify-content:center;
+    padding:40px 20px;
+  }
+  .card{width:520px; max-width:100%;}
+  h1{font-family:'Fraunces', serif; font-weight:600; font-size:26px; margin:0 0 6px;}
+  p.sub{color:var(--dim); font-size:14px; line-height:1.6; margin:0 0 28px;}
+  .panel{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12px; color:var(--dim); margin-bottom:6px; font-weight:500;}
+  .field input[type="text"], .field input[type="password"], .field select{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border);
+    background:rgba(255,255,255,.04); color:var(--paper); font-size:14px; font-family:inherit;
+  }
+  .field input[type="range"]{width:100%; accent-color:var(--accent);}
+  .field input[type="color"]{width:48px; height:34px; padding:2px; cursor:pointer;}
+  .checkbox-field label{display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer; font-weight:400;}
+  .checkbox-field input{width:auto;}
+  .range-row{display:flex; align-items:center; gap:12px;}
+  .range-row input{flex:1;}
+  .range-row .val{font-size:12px; color:var(--dim); width:42px; text-align:right;}
+  .rte-toolbar{display:flex; gap:6px; margin-bottom:6px;}
+  .rte-toolbar button{
+    width:32px; height:32px; border-radius:6px; border:1px solid var(--border);
+    background:rgba(255,255,255,.04); color:var(--paper); cursor:pointer; font-size:13px;
+  }
+  .rte-toolbar button:hover{background:rgba(255,255,255,.08);}
+  .rte-toolbar button.italic{font-style:italic;}
+  .rte-editor{
+    min-height:80px; padding:10px 12px; border-radius:8px; border:1px solid var(--border);
+    background:rgba(255,255,255,.04); color:var(--paper); font-size:14px; line-height:1.5;
+  }
+  .rte-editor:focus{outline:1px solid var(--accent); border-color:var(--accent);}
+  .divider{font-size:11px; letter-spacing:.05em; color:var(--accent); font-weight:600; margin:22px 0 14px; padding-top:16px; border-top:1px solid var(--border);}
+  .divider:first-child{margin-top:0; padding-top:0; border-top:none;}
+  button{
+    background:var(--accent); color:#12160f; border:none; border-radius:8px;
+    padding:12px 20px; font-size:14px; font-weight:600; cursor:pointer; width:100%;
+  }
+  button.secondary{background:transparent; color:var(--dim); border:1px solid var(--border);}
+  #status{font-size:13px; color:var(--dim); margin-top:14px; min-height:18px;}
+  #settingsForm{display:none;}
+  .row-inline{display:flex; align-items:center; justify-content:space-between; gap:16px;}
+
+  #scheduleGrid{max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:8px;}
+  .schedule-row{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 0;}
+  .schedule-hour{font-size:11px; color:var(--dim); width:100px; flex-shrink:0;}
+  .schedule-select{flex:1; padding:5px 6px; font-size:12px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,.04); color:var(--paper); font-family:inherit;}
+  .schedule-note{font-size:11px; color:var(--dim); line-height:1.6; margin-bottom:14px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Homeglass — Remote Admin</h1>
+  <p class="sub">Edit the dashboard's settings from here.</p>
+
+  <div class="panel">
+    <div id="signInSection">
+      <div class="field">
+        <label>Relay address (the web app URL ending in /exec)</label>
+        <input type="text" id="relayUrl" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>Relay key</label>
+        <input type="text" id="relayKey" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>Admin password</label>
+        <input type="password" id="adminPassword" autocomplete="current-password">
+      </div>
+      <button id="signInBtn" type="button">Unlock</button>
+    </div>
+
+    <form id="settingsForm">
+      <div class="divider">WEATHER LOCATION</div>
+      <div class="field">
+        <label>City for weather, e.g. Seattle,US (blank = no weather shown)</label>
+        <input type="text" id="city">
+      </div>
+
+      <div class="divider">SCHEDULE</div>
+      <p class="schedule-note">
+        Assign a module to each hour. Anything left on "Module 1 – Clock" is the default.
+      </p>
+      <div id="scheduleGrid"></div>
+
+      <div class="divider">MODULE 1 — CLOCK</div>
+      <div class="field">
+        <label>Position</label>
+        <select id="module1Position">
+          <option value="center">Center</option>
+          <option value="top-left">Top left</option>
+          <option value="top-right">Top right</option>
+          <option value="bottom-left">Bottom left</option>
+          <option value="bottom-right">Bottom right</option>
+        </select>
+      </div>
+      <div class="field row-inline"><label>Background color</label><input type="color" id="module1BgColor"></div>
+      <div class="field">
+        <label>Font</label>
+        <select id="module1Font">
+          <option value="fraunces">Fraunces — elegant serif</option>
+          <option value="playfair">Playfair Display — classic serif</option>
+          <option value="inter">Inter — clean sans-serif</option>
+          <option value="googlesans">Google Sans Flex — Google's own typeface</option>
+          <option value="oswald">Oswald — bold condensed sans</option>
+          <option value="merriweather">Merriweather — warm readable serif</option>
+          <option value="librecaslon">Libre Caslon Text — classic book serif</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Font size</label>
+        <div class="range-row"><input type="range" id="module1Scale" min="0.5" max="3" step="0.1"><span class="val" id="module1ScaleVal"></span></div>
+      </div>
+      <div class="field row-inline"><label>Font color</label><input type="color" id="module1TextColor"></div>
+      <div class="field checkbox-field"><label><input type="checkbox" id="module1Bold"> Bold</label></div>
+      <div class="field">
+        <label>Time format</label>
+        <select id="module1TimeFormat">
+          <option value="12">12-hour — 3:45 PM</option>
+          <option value="24">24-hour — 15:45</option>
+        </select>
+      </div>
+      <div class="field checkbox-field"><label><input type="checkbox" id="module1ShowSeconds"> Show seconds</label></div>
+
+      <div class="divider">MODULE 2 — PHOTOS</div>
+      <div class="field">
+        <label>Time &amp; date overlay position</label>
+        <select id="module2Position">
+          <option value="bottom-left">Bottom left</option>
+          <option value="bottom-right">Bottom right</option>
+          <option value="top-left">Top left</option>
+          <option value="top-right">Top right</option>
+          <option value="center">Center</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Weather overlay position</label>
+        <select id="weatherPosition">
+          <option value="top-left">Top left</option>
+          <option value="bottom-left">Bottom left</option>
+          <option value="top-right">Top right</option>
+          <option value="bottom-right">Bottom right</option>
+          <option value="center">Center</option>
+        </select>
+        <p style="font-size:11px; color:var(--dim); margin-top:6px;">Can't share a corner with the time &amp; date overlay above.</p>
+      </div>
+      <div class="field">
+        <label>Photo refresh rate</label>
+        <div class="range-row"><input type="range" id="photoInterval" min="10" max="300" step="5"><span class="val" id="photoIntervalVal"></span></div>
+      </div>
+      <div class="field">
+        <label>Time format</label>
+        <select id="timeFormat">
+          <option value="12">12-hour — 3:45 PM</option>
+          <option value="24">24-hour — 15:45</option>
+        </select>
+      </div>
+      <div class="field checkbox-field"><label><input type="checkbox" id="showSeconds"> Show seconds</label></div>
+      <div class="field">
+        <label>Date format</label>
+        <select id="dateFormat">
+          <option value="ddd-date-mmm">Wed 9 Sep</option>
+          <option value="long">Monday, January 5</option>
+          <option value="short">Mon, Jan 5</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Time &amp; date overlay size</label>
+        <div class="range-row"><input type="range" id="timeScale" min="0.6" max="2" step="0.1"><span class="val" id="timeScaleVal"></span></div>
+      </div>
+      <div class="field">
+        <label>Temperature units</label>
+        <select id="tempUnit">
+          <option value="metric">Celsius (°C)</option>
+          <option value="imperial">Fahrenheit (°F)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Temperature size</label>
+        <div class="range-row"><input type="range" id="weatherScale" min="0.6" max="2" step="0.1"><span class="val" id="weatherScaleVal"></span></div>
+      </div>
+      <div class="field">
+        <label>Icon size</label>
+        <div class="range-row"><input type="range" id="weatherIconScale" min="1" max="8" step="0.5"><span class="val" id="weatherIconScaleVal"></span></div>
+      </div>
+      <div class="field">
+        <label>Clock &amp; weather font</label>
+        <select id="font">
+          <option value="fraunces">Fraunces — elegant serif</option>
+          <option value="playfair">Playfair Display — classic serif</option>
+          <option value="inter">Inter — clean sans-serif</option>
+          <option value="googlesans">Google Sans Flex — Google's own typeface</option>
+          <option value="oswald">Oswald — bold condensed sans</option>
+          <option value="merriweather">Merriweather — warm readable serif</option>
+          <option value="librecaslon">Libre Caslon Text — classic book serif</option>
+        </select>
+      </div>
+
+      <div class="divider">MODULE 3 — CALENDAR</div>
+      <div class="field">
+        <label>Days to show</label>
+        <select id="calendarDays">
+          <option value="1">Today</option>
+          <option value="3">Today + 2</option>
+          <option value="5">Today + 4</option>
+          <option value="7">Today + 6</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Calendar size</label>
+        <div class="range-row"><input type="range" id="agendaScale" min="1" max="2.2" step="0.1"><span class="val" id="agendaScaleVal"></span></div>
+      </div>
+
+      <div class="field row-inline"><label>Heading color (TODAY, THU...)</label><input type="color" id="calendarHeadingColor" value="#A9A79F"></div>
+      <div class="field row-inline"><label>Event time color</label><input type="color" id="accentColor" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Event title color</label><input type="color" id="calendarEntryColor" value="#F5F2EA"></div>
+
+      <div class="divider">MODULE 4 — TASKS</div>
+      <div class="field checkbox-field"><label><input type="checkbox" id="showTasks"> Enable Module 4 when scheduled</label></div>
+      <div class="field">
+        <label>Task refresh rate</label>
+        <div class="range-row"><input type="range" id="taskInterval" min="10" max="300" step="5"><span class="val" id="taskIntervalVal"></span></div>
+      </div>
+      <div class="field">
+        <label>Font</label>
+        <select id="taskFont">
+          <option value="fraunces">Fraunces — elegant serif</option>
+          <option value="playfair">Playfair Display — classic serif</option>
+          <option value="inter">Inter — clean sans-serif</option>
+          <option value="googlesans">Google Sans Flex — Google's own typeface</option>
+          <option value="oswald">Oswald — bold condensed sans</option>
+          <option value="merriweather">Merriweather — warm readable serif</option>
+          <option value="librecaslon">Libre Caslon Text — classic book serif</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Font size</label>
+        <div class="range-row"><input type="range" id="taskScale" min="0.5" max="2.5" step="0.1"><span class="val" id="taskScaleVal"></span></div>
+      </div>
+      <div class="field row-inline"><label>Background color</label><input type="color" id="taskBgColor"></div>
+      <div class="field row-inline"><label>Text color</label><input type="color" id="taskTextColor"></div>
+
+      <div class="divider">MESSAGE ALERT</div>
+      <div class="field checkbox-field">
+        <label><input type="checkbox" id="alertEnabled"> Show alert (overrides the schedule until turned off)</label>
+      </div>
+      <div class="field">
+        <label>Message</label>
+        <div class="rte-toolbar">
+          <button type="button" data-cmd="bold"><b>B</b></button>
+          <button type="button" data-cmd="italic" class="italic">I</button>
+          <button type="button" data-cmd="underline" style="text-decoration:underline;">U</button>
+        </div>
+        <div id="alertMessageInput" class="rte-editor" contenteditable="true"></div>
+      </div>
+      <div class="field">
+        <label>Font</label>
+        <select id="alertFont">
+          <option value="fraunces">Fraunces — elegant serif</option>
+          <option value="playfair">Playfair Display — classic serif</option>
+          <option value="inter">Inter — clean sans-serif</option>
+          <option value="googlesans">Google Sans Flex — Google's own typeface</option>
+          <option value="oswald">Oswald — bold condensed sans</option>
+          <option value="merriweather">Merriweather — warm readable serif</option>
+          <option value="librecaslon">Libre Caslon Text — classic book serif</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Font size</label>
+        <div class="range-row"><input type="range" id="alertScale" min="0.5" max="2.5" step="0.1"><span class="val" id="alertScaleVal"></span></div>
+      </div>
+      <div class="field row-inline"><label>Background color</label><input type="color" id="alertBgColor"></div>
+      <div class="field row-inline"><label>Text color</label><input type="color" id="alertTextColor"></div>
+
+      <button type="submit" style="margin-top:10px;">Save changes</button>
+    </form>
+
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+const RELAY_STORE = "homeglass_admin_relay";
+let relay = { url: "", key: "" };
+let password = "";
+let currentSchedule = new Array(24).fill(1);
+
+const MODULE_OPTIONS = [
+  { v: 1, label: 'Module 1 – Clock' },
+  { v: 2, label: 'Module 2 – Photos' },
+  { v: 3, label: 'Module 3 – Calendar' },
+  { v: 4, label: 'Module 4 – Tasks' }
+];
+
+function hourLabel(h){
+  const start = new Date(2000, 0, 1, h, 0);
+  const end = new Date(2000, 0, 1, h + 1, 0);
+  const fmt = d => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return `${fmt(start)}–${fmt(end)}`;
+}
+
+function buildScheduleUI(){
+  const grid = document.getElementById('scheduleGrid');
+  grid.innerHTML = '';
+  for (let h = 0; h < 24; h++){
+    const row = document.createElement('div');
+    row.className = 'schedule-row';
+
+    const label = document.createElement('span');
+    label.className = 'schedule-hour';
+    label.textContent = hourLabel(h);
+
+    const select = document.createElement('select');
+    select.className = 'schedule-select';
+    MODULE_OPTIONS.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.v;
+      o.textContent = opt.label;
+      select.appendChild(o);
+    });
+    select.value = currentSchedule[h] || 1;
+    select.addEventListener('change', () => {
+      currentSchedule[h] = parseInt(select.value, 10);
+    });
+
+    row.appendChild(label);
+    row.appendChild(select);
+    grid.appendChild(row);
+  }
+}
+
+const RANGE_FIELDS = ['module1Scale', 'timeScale', 'weatherScale', 'weatherIconScale', 'agendaScale', 'taskScale', 'alertScale'];
+const INTERVAL_FIELDS = ['photoInterval', 'taskInterval'];
+const ALL_FIELDS = [
+  'city',
+  'module1Position', 'module1BgColor', 'module1Font',
+  'module1TextColor', 'module1Bold', 'module1TimeFormat', 'module1ShowSeconds',
+  'module2Position', 'weatherPosition',
+  'timeFormat', 'showSeconds', 'dateFormat', 'tempUnit',
+  'font', 'accentColor', 'calendarHeadingColor', 'calendarEntryColor',
+  'calendarDays',
+  'showTasks', 'taskFont', 'taskBgColor', 'taskTextColor',
+  'alertEnabled', 'alertFont', 'alertBgColor', 'alertTextColor',
+  ...RANGE_FIELDS,
+  ...INTERVAL_FIELDS
+];
+
+function formatInterval(seconds){
+  if (seconds >= 60){
+    const mins = Math.round(seconds / 60 * 10) / 10;
+    return mins + 'm';
+  }
+  return seconds + 's';
+}
+
+function applyIntervalDisplay(id){
+  document.getElementById(id + 'Val').textContent = formatInterval(parseInt(document.getElementById(id).value, 10));
+}
+
+// Prevents the clock overlay and weather overlay sharing a corner.
+function refreshPositionOptionAvailability(){
+  const clockSel = document.getElementById('module2Position');
+  const weatherSel = document.getElementById('weatherPosition');
+  Array.from(clockSel.options).forEach(o => { o.disabled = (o.value === weatherSel.value); });
+  Array.from(weatherSel.options).forEach(o => { o.disabled = (o.value === clockSel.value); });
+}
+
+function setStatus(msg){ document.getElementById('status').textContent = msg; }
+
+try{
+  const saved = JSON.parse(localStorage.getItem(RELAY_STORE));
+  if (saved){ document.getElementById('relayUrl').value = saved.url || ''; document.getElementById('relayKey').value = saved.key || ''; }
+}catch(e){}
+// A link like admin.html#url=...&key=... fills the first two boxes (the password is never in a link).
+(function(){
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('url')) document.getElementById('relayUrl').value = h.get('url');
+  if (h.get('key')) document.getElementById('relayKey').value = h.get('key');
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+})();
+
+function applyRangeDisplay(id){
+  document.getElementById(id + 'Val').textContent = Math.round(document.getElementById(id).value * 100) + '%';
+}
+
+async function relayGet(query){
+  const res = await fetch(relay.url + '?key=' + encodeURIComponent(relay.key) + '&' + query);
+  const text = await res.text();
+  if (!text) throw new Error('The relay key was not accepted.');
+  return JSON.parse(text);
+}
+async function relayPost(body){
+  const res = await fetch(relay.url, { method: 'POST', body: JSON.stringify(Object.assign({ key: relay.key, password }, body)) });
+  const text = await res.text();
+  if (!text) throw new Error('The relay key was not accepted.');
+  return JSON.parse(text);
+}
+
+let formBound = false;
+
+document.getElementById('signInBtn').addEventListener('click', async () => {
+  relay.url = document.getElementById('relayUrl').value.trim();
+  relay.key = document.getElementById('relayKey').value.trim();
+  password = document.getElementById('adminPassword').value;
+  if (!relay.url || !relay.key || !password){ setStatus('Enter the address, key and password.'); return; }
+  setStatus('Checking…');
+  try{
+    const chk = await relayPost({ action: 'checkAdmin' });
+    if (!chk.ok){ setStatus(chk.error || 'Not accepted.'); return; }
+    localStorage.setItem(RELAY_STORE, JSON.stringify(relay)); // password is deliberately not stored
+    const r = await relayGet('action=settings');
+    showForm(r.settings || {});
+  }catch(err){
+    setStatus('Could not reach the relay: ' + err.message);
+  }
+});
+
+function showForm(data){
+  if (Array.isArray(data.schedule) && data.schedule.length === 24) currentSchedule = data.schedule;
+  buildScheduleUI();
+
+  ALL_FIELDS.forEach(key => {
+    const el = document.getElementById(key);
+    if (!el || data[key] === undefined) return;
+    if (el.type === 'checkbox') el.checked = data[key];
+    else el.value = data[key];
+    if (RANGE_FIELDS.includes(key)) applyRangeDisplay(key);
+    if (INTERVAL_FIELDS.includes(key)) applyIntervalDisplay(key);
+  });
+  document.getElementById('alertMessageInput').innerHTML = data.alertMessageHtml || '';
+
+  if (!formBound){
+    formBound = true;
+    RANGE_FIELDS.forEach(key => document.getElementById(key).addEventListener('input', () => applyRangeDisplay(key)));
+    INTERVAL_FIELDS.forEach(key => document.getElementById(key).addEventListener('input', () => applyIntervalDisplay(key)));
+    document.getElementById('module2Position').addEventListener('change', refreshPositionOptionAvailability);
+    document.getElementById('weatherPosition').addEventListener('change', refreshPositionOptionAvailability);
+    document.querySelectorAll('.rte-toolbar button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.execCommand(btn.dataset.cmd, false, null);
+        document.getElementById('alertMessageInput').focus();
+      });
+    });
+  }
+  // Sliders show their default position when nothing has been saved yet.
+  RANGE_FIELDS.concat(INTERVAL_FIELDS).forEach(key => {
+    if (data[key] === undefined) { RANGE_FIELDS.includes(key) ? applyRangeDisplay(key) : applyIntervalDisplay(key); }
+  });
+  refreshPositionOptionAvailability();
+
+  document.getElementById('signInSection').style.display = 'none';
+  document.getElementById('settingsForm').style.display = 'block';
+  setStatus('Unlocked. Make your changes and tap Save.');
+}
+
+document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setStatus('Saving…');
+  const payload = { schedule: currentSchedule, alertMessageHtml: document.getElementById('alertMessageInput').innerHTML };
+  ALL_FIELDS.forEach(key => {
+    const el = document.getElementById(key);
+    if (!el) return;
+    if (el.type === 'checkbox') payload[key] = el.checked;
+    else if (RANGE_FIELDS.includes(key)) payload[key] = parseFloat(el.value);
+    else if (INTERVAL_FIELDS.includes(key)) payload[key] = parseInt(el.value, 10);
+    else payload[key] = el.value;
+  });
+  try{
+    const r = await relayPost({ action: 'saveSettings', settings: payload });
+    setStatus(r.ok ? 'Saved. The display picks it up within about 30 seconds.' : (r.error || 'Not saved.'));
+  }catch(err){
+    setStatus('Could not save: ' + err.message);
+  }
+});
+</script>
+</body>
+</html>

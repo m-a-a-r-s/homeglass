@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Homeglass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Playfair+Display:wght@400;600&family=Google+Sans+Flex:wght@300;400;500;600&family=Oswald:wght@300;400;500;600&family=Merriweather:wght@300;400;700&family=Libre+Caslon+Text:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- PWA: installable, full-screen, home-screen icon -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0c0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Homeglass">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --scrim-top: rgba(10,12,10,.55);
+    --scrim-bottom: rgba(8,10,8,.75);
+    --paper: #F5F2EA;
+    --glass-bg: rgba(16,18,16,.38);
+    --glass-border: rgba(245,242,234,.18);
+    --accent: #9FB89A;
+    --dim: rgba(245,242,234,.62);
+    --font-display: 'Fraunces', serif; /* Module 2's clock + the temperature */
+    --task-bg: #12160f;
+    --task-text: #F5F2EA;
+    --task-font: 'Fraunces', serif;
+    --task-scale: 1;
+    --time-scale: 1;    /* Module 2's clock overlay size */
+    --weather-scale: 1;
+    --weather-icon-scale: 5;
+    --agenda-scale: 1.4;
+    --cal-heading: rgba(245,242,234,.62);
+    --cal-entry: #F5F2EA;
+    --module1-font: 'Fraunces', serif;
+    --module1-scale: 1;
+    --module1-text: #F5F2EA;
+    --module1-weight: 300;
+    --module1-weight-date: 500;
+    --alert-bg: #3a1414;
+    --alert-text: #F5F2EA;
+    --alert-font: 'Fraunces', serif;
+    --alert-scale: 1;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; overflow:hidden;}
+  body{
+    font-family:'Inter', sans-serif;
+    color:var(--paper);
+    background:#0a0c0a;
+    position:relative;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- Module screens ---------- */
+  /* Each module is a full-screen layer; the scheduler shows exactly one at a time. */
+  .module-screen{position:fixed; inset:0; display:none;}
+  .module-screen.active{display:flex;}
+
+  /* Module 1 — clock only, custom background */
+  #module1{align-items:center; justify-content:center; background:#0a0c0a;}
+
+  /* Module 2 — photos + weather + repositionable clock overlay */
+  #module2{align-items:stretch; justify-content:stretch;}
+  #photoLayer{position:absolute; inset:0; z-index:0;}
+  .photo{
+    position:absolute; inset:0;
+    background-size:cover; background-position:center;
+    opacity:0; transition:opacity 2.4s ease, transform 45s linear;
+    transform:scale(1.0);
+  }
+  .photo.active{opacity:1; transform:scale(1.08);}
+  #photoLayer::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg, var(--scrim-top) 0%, transparent 32%, transparent 55%, var(--scrim-bottom) 100%);
+    z-index:1;
+  }
+  #photoEmpty{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--dim); font-size:15px; text-align:center; padding:40px; z-index:0;
+  }
+  /* Icon stacked above temperature, both centered on the same vertical axis —
+     and structurally matching #clock's own centered-column layout, so when
+     weather and the clock overlay share an edge (both top or both bottom)
+     they sit level with each other. */
+  #weather{position:absolute; z-index:2; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  #weather .temp{font-family:var(--font-display); font-weight:500; font-size:calc(42px * var(--weather-scale)); line-height:1;}
+  #weather .icon{font-size:calc(40px * var(--weather-icon-scale)); line-height:1; opacity:.9;}
+
+  /* Module 3 — full-screen calendar, 1/3/5/7-day view.
+     Each day is its own rounded box; the outer container is just layout. */
+  #module3{align-items:center; justify-content:center; background:#0a0c0a; padding:32px;}
+  #agenda{
+    width:var(--agenda-width, min(820px, 92vw));
+    max-height:88vh;
+    overflow-y:auto;
+  }
+  #calendarDays{display:flex; gap:calc(14px * var(--agenda-scale)); justify-content:center; align-items:stretch;}
+  .cal-day-col{
+    flex:1; min-width:0;
+    background:rgba(245,242,234,.06);
+    border:1px solid var(--glass-border);
+    border-radius:18px;
+    padding:calc(16px * var(--agenda-scale)) calc(18px * var(--agenda-scale));
+  }
+  .cal-day-heading{font-size:calc(13px * var(--agenda-scale)); font-weight:600; letter-spacing:.04em; color:var(--cal-heading); margin-bottom:12px; white-space:nowrap;}
+  .cal-day-heading.is-today{font-weight:700;}
+  /* Time and event text sit a "double space" apart (0.55em of the title's size),
+     rather than the time sitting in a fixed-width column. */
+  .event{display:flex; align-items:baseline; gap:0.55em; font-size:calc(15px * var(--agenda-scale)); padding:11px 0; border-top:1px solid rgba(245,242,234,.08);}
+  .event:first-of-type{border-top:none;}
+  .event .time{font-size:calc(13px * var(--agenda-scale)); color:var(--accent); flex-shrink:0; white-space:nowrap;}
+  .event .title{font-size:calc(15px * var(--agenda-scale)); font-weight:500; min-width:0; flex:1; overflow-wrap:anywhere; color:var(--cal-entry);}
+  #calendarDays.compact .event{flex-direction:column; align-items:stretch; gap:2px;}
+  .agenda-empty, .agenda-msg{font-size:calc(14px * var(--agenda-scale)); color:var(--dim); padding:6px 0;}
+
+  /* Module 4 — full-screen task messages */
+  #module4{align-items:center; justify-content:center; padding:60px; background:var(--task-bg);}
+  #module4Text{
+    font-family:var(--task-font); font-weight:500; text-align:center; line-height:1.3;
+    font-size:calc(clamp(28px, 5vw, 64px) * var(--task-scale)); max-width:80%; color:var(--task-text);
+    transition:opacity .4s ease;
+  }
+
+  /* Module 5 — critical alert override */
+  #module5{align-items:center; justify-content:center; padding:60px; background:var(--alert-bg);}
+  #module5Text{
+    font-family:var(--alert-font); text-align:center; line-height:1.3;
+    font-size:calc(clamp(28px, 5vw, 64px) * var(--alert-scale)); max-width:85%; color:var(--alert-text);
+  }
+  #module5Text b, #module5Text strong{font-weight:700;}
+  #module5Text i, #module5Text em{font-style:italic;}
+
+  /* ---------- Clock (shared element, reparented between Module 1 and Module 2) ---------- */
+  #clock{line-height:1; display:flex; flex-direction:column; align-items:center;}
+  #time{font-family:var(--font-display); font-weight:300; font-size:calc(clamp(64px, 11vw, 132px) * var(--time-scale)); letter-spacing:-.01em;}
+  #time .meridiem{font-size:0.5em; margin-left:0.05em; font-weight:400;}
+  #dateLine{font-size:calc(32px * var(--time-scale)); color:var(--dim); margin-bottom:2px; font-weight:500; text-align:center;}
+
+  /* Module 1 gets its own font + a much larger scale range, since the clock is the whole screen */
+  #module1 #time{font-family:var(--module1-font); font-size:calc(clamp(64px, 16vw, 260px) * var(--module1-scale)); color:var(--module1-text); font-weight:var(--module1-weight);}
+  #module1 #dateLine{font-size:calc(36px * var(--module1-scale)); color:var(--module1-text); font-weight:var(--module1-weight-date);}
+
+  /* Anchor positions — always absolute + explicit offsets, so centering is
+     robust regardless of which module/container the element lives in. */
+  .anchor-top-left{position:absolute; top:48px; left:56px;}
+  .anchor-top-right{position:absolute; top:48px; right:56px;}
+  .anchor-bottom-left{position:absolute; bottom:48px; left:56px;}
+  .anchor-bottom-right{position:absolute; bottom:48px; right:56px;}
+  .anchor-center{position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center;}
+
+
+  /* ---------- First-time connection screen (only shown when no relay is stored) ---------- */
+  #connect{position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:#0a0c0a; padding:24px;}
+  #connect.open{display:flex;}
+  .connect-card{width:460px; max-width:100%; background:#15170f; border:1px solid var(--glass-border); border-radius:16px; padding:28px;}
+  .connect-card h2{font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin-bottom:6px;}
+  .connect-card p{font-size:13px; color:var(--dim); line-height:1.5; margin-bottom:18px;}
+  .connect-card label{display:block; font-size:12px; color:var(--dim); margin:12px 0 6px; font-weight:500;}
+  .connect-card input{width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(255,255,255,.04); color:var(--paper); font-size:16px; font-family:inherit;}
+  .connect-card button{margin-top:20px; width:100%; background:var(--accent); color:#12160f; border:none; border-radius:8px; padding:12px; font-size:15px; font-weight:600; cursor:pointer;}
+  #connectMsg{font-size:13px; margin-top:12px; color:#ff8a80; min-height:18px;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<!-- Module 1: clock only -->
+<div id="module1" class="module-screen">
+  <div id="clockHome1"></div>
+</div>
+
+<!-- Module 2: photos + weather + clock overlay -->
+<div id="module2" class="module-screen">
+  <div id="photoLayer"><div id="photoEmpty">Waiting for photos…</div></div>
+  <div id="weather">
+    <div class="icon" id="weatherIcon">☁️</div>
+    <div class="temp" id="weatherTemp">--°</div>
+  </div>
+  <div id="clockHome2"></div>
+</div>
+
+<!-- Module 3: full-screen calendar (1/3/5/7-day view) -->
+<div id="module3" class="module-screen">
+  <div id="agenda">
+    <div id="calendarDays"><div class="agenda-msg">Loading your calendar…</div></div>
+  </div>
+</div>
+
+<!-- Module 4: full-screen task messages -->
+<div id="module4" class="module-screen">
+  <div id="module4Text">Loading…</div>
+</div>
+
+<!-- Module 5: critical alert override -->
+<div id="module5" class="module-screen">
+  <div id="module5Text"></div>
+</div>
+
+<!-- The actual clock element — JS moves this between clockHome1 / clockHome2 -->
+<div id="clock">
+  <div id="dateLine">—</div>
+  <div id="time">--:--</div>
+</div>
+
+
+<div id="connect">
+  <div class="connect-card">
+    <h2>Connect this display</h2>
+    <p>Enter the relay address and key once. They are stored on this device only. No Google sign-in is needed.</p>
+    <label>Relay address (ends in /exec)</label>
+    <input id="relayUrlInput" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label>Relay key</label>
+    <input id="relayKeyInput" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button id="connectBtn">Connect</button>
+    <div id="connectMsg"></div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Relay connection (stored on this device only) ---------------- */
+const CONN_KEY = 'homeglass_relay';
+const SETTINGS_CACHE_KEY = 'homeglass_settings_cache';
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+let conn = null;
+try{ conn = JSON.parse(lsGet(CONN_KEY)); }catch(e){}
+
+// A link like  display.html#url=...&key=...  connects in one step, then the
+// address bar is cleaned so the key is not left visible. #reset forgets it.
+(function readFragment(){
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.has('reset')){ lsDel(CONN_KEY); lsDel(SETTINGS_CACHE_KEY); conn = null; }
+  if (h.get('url') && h.get('key')){
+    conn = { url: h.get('url').trim(), key: h.get('key').trim() };
+    lsSet(CONN_KEY, JSON.stringify(conn));
+  }
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+})();
+
+async function relayGet(query){
+  const res = await fetch(conn.url + '?key=' + encodeURIComponent(conn.key) + '&' + query);
+  const text = await res.text();
+  if (!text) throw new Error('Relay key not accepted');
+  return JSON.parse(text);
+}
+
+/* ---------------- Settings (cached so a reload works offline) ---------------- */
+let cfg = {};
+try{ cfg = JSON.parse(lsGet(SETTINGS_CACHE_KEY)) || {}; }catch(e){}
+
+const FONT_STACKS = {
+  fraunces: "'Fraunces', serif",
+  playfair: "'Playfair Display', serif",
+  inter: "'Inter', sans-serif",
+  googlesans: "'Google Sans Flex', sans-serif",
+  oswald: "'Oswald', sans-serif",
+  merriweather: "'Merriweather', serif",
+  librecaslon: "'Libre Caslon Text', serif"
+};
+
+function applyTheme(){
+  const root = document.documentElement.style;
+  const f = k => (cfg[k] && FONT_STACKS[cfg[k]]) ? FONT_STACKS[cfg[k]] : FONT_STACKS.fraunces;
+  root.setProperty('--font-display', f('font'));
+  root.setProperty('--accent', cfg.accentColor || '#9FB89A');
+  root.setProperty('--cal-heading', cfg.calendarHeadingColor || 'rgba(245,242,234,.62)');
+  root.setProperty('--cal-entry', cfg.calendarEntryColor || '#F5F2EA');
+  root.setProperty('--task-bg', cfg.taskBgColor || '#12160f');
+  root.setProperty('--task-text', cfg.taskTextColor || '#F5F2EA');
+  root.setProperty('--task-scale', cfg.taskScale || 1);
+  root.setProperty('--task-font', f('taskFont'));
+  root.setProperty('--time-scale', cfg.timeScale || 1);
+  root.setProperty('--weather-scale', cfg.weatherScale || 1);
+  root.setProperty('--weather-icon-scale', cfg.weatherIconScale || 5);
+
+  const days = parseInt(cfg.calendarDays, 10) || 1;
+  const DAY_SCALE = { 1: 1, 3: 0.85, 5: 0.7, 7: 0.55 };
+  root.setProperty('--agenda-scale', (cfg.agendaScale || 1.4) * (DAY_SCALE[days] || 1));
+  root.setProperty('--agenda-width', days === 1 ? 'min(820px, 92vw)' : 'min(96vw, ' + (days * 340) + 'px)');
+
+  root.setProperty('--module1-font', f('module1Font'));
+  root.setProperty('--module1-scale', cfg.module1Scale || 1);
+  root.setProperty('--module1-text', cfg.module1TextColor || '#F5F2EA');
+  root.setProperty('--module1-weight', cfg.module1Bold ? 700 : 300);
+  root.setProperty('--module1-weight-date', cfg.module1Bold ? 700 : 500);
+  document.getElementById('module1').style.background = cfg.module1BgColor || '#0a0c0a';
+
+  root.setProperty('--alert-font', f('alertFont'));
+  root.setProperty('--alert-scale', cfg.alertScale || 1);
+  root.setProperty('--alert-bg', cfg.alertBgColor || '#3a1414');
+  root.setProperty('--alert-text', cfg.alertTextColor || '#F5F2EA');
+  const alertEl = document.getElementById('module5Text');
+  if (alertEl.innerHTML !== (cfg.alertMessageHtml || '')) alertEl.innerHTML = cfg.alertMessageHtml || '';
+
+  document.getElementById('weather').classList.toggle('hidden', !weather);
+}
+
+/* ---------------- Schedule / module switching ---------------- */
+let currentModule = null;
+let photoTimer = null;
+let taskTimer = null;
+
+function getScheduledModule(){
+  if (cfg.alertEnabled) return 5;
+  const arr = Array.isArray(cfg.schedule) ? cfg.schedule : [];
+  let m = arr[new Date().getHours()] || 1;
+  if (m === 4 && cfg.showTasks === false) m = 1;
+  return m;
+}
+
+function setAnchor(el, pos){
+  el.classList.remove('anchor-top-left', 'anchor-top-right', 'anchor-bottom-left', 'anchor-bottom-right', 'anchor-center');
+  el.classList.add('anchor-' + (pos || 'center'));
+}
+
+function applyClockPlacement(){
+  const clockEl = document.getElementById('clock');
+  if (currentModule === 1){
+    const home = document.getElementById('clockHome1');
+    if (clockEl.parentElement !== home) home.appendChild(clockEl);
+    setAnchor(clockEl, cfg.module1Position || 'center');
+  } else if (currentModule === 2){
+    const home = document.getElementById('clockHome2');
+    if (clockEl.parentElement !== home) home.appendChild(clockEl);
+    setAnchor(clockEl, cfg.module2Position || 'bottom-left');
+    setAnchor(document.getElementById('weather'), cfg.weatherPosition || 'top-left');
+  }
+}
+
+function activateModule(m){
+  if (m === currentModule){ applyClockPlacement(); restartTimers(); return; }
+  currentModule = m;
+  [1, 2, 3, 4, 5].forEach(n => document.getElementById('module' + n).classList.remove('active'));
+  document.getElementById('module' + m).classList.add('active');
+  if (m !== 2 && photoTimer){ clearInterval(photoTimer); photoTimer = null; }
+  if (m !== 4 && taskTimer){ clearInterval(taskTimer); taskTimer = null; }
+  applyClockPlacement();
+  tickClock();
+  if (m === 2){ advancePhoto(); photoTimer = setInterval(advancePhoto, (cfg.photoInterval || 45) * 1000); }
+  if (m === 4){ advanceTaskMessage(); taskTimer = setInterval(advanceTaskMessage, (cfg.taskInterval || 45) * 1000); }
+}
+
+// Re-applies timer speeds after a settings change, without jumping photo/message.
+let appliedPhotoInterval = null, appliedTaskInterval = null;
+function restartTimers(){
+  const pi = cfg.photoInterval || 45, ti = cfg.taskInterval || 45;
+  if (photoTimer && pi !== appliedPhotoInterval){ clearInterval(photoTimer); photoTimer = setInterval(advancePhoto, pi * 1000); }
+  if (taskTimer && ti !== appliedTaskInterval){ clearInterval(taskTimer); taskTimer = setInterval(advanceTaskMessage, ti * 1000); }
+  appliedPhotoInterval = pi; appliedTaskInterval = ti;
+}
+
+function checkSchedule(){ activateModule(getScheduledModule()); }
+setInterval(checkSchedule, 30000);
+
+/* ---------------- Clock ---------------- */
+function tickClock(){
+  const now = new Date();
+  const m1 = currentModule === 1;
+  const use24 = m1 ? (cfg.module1TimeFormat === '24') : (cfg.timeFormat === '24');
+  const showSeconds = m1 ? !!cfg.module1ShowSeconds : !!cfg.showSeconds;
+  const parts = new Intl.DateTimeFormat([], {
+    hour: use24 ? '2-digit' : 'numeric', minute: '2-digit',
+    second: showSeconds ? '2-digit' : undefined, hour12: !use24
+  }).formatToParts(now);
+  let mainStr = '', meridiem = '';
+  parts.forEach(p => { if (p.type === 'dayPeriod') meridiem = p.value; else mainStr += p.value; });
+  mainStr = mainStr.trimEnd();
+  const timeEl = document.getElementById('time');
+  timeEl.textContent = mainStr;
+  if (meridiem){
+    const s = document.createElement('span');
+    s.className = 'meridiem'; s.textContent = meridiem;
+    timeEl.appendChild(s);
+  }
+
+  const dateFormat = cfg.dateFormat || 'ddd-date-mmm';
+  let dateText;
+  if (dateFormat === 'ddd-date-mmm'){
+    dateText = now.toLocaleDateString([], { weekday: 'short' }) + ' ' + now.getDate() + ' ' + now.toLocaleDateString([], { month: 'short' });
+  } else {
+    dateText = now.toLocaleDateString([], dateFormat === 'short'
+      ? { weekday: 'short', month: 'short', day: 'numeric' }
+      : { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+  document.getElementById('dateLine').textContent = dateText;
+}
+setInterval(tickClock, 1000);
+
+/* ---------------- Weather (supplied by the relay) ---------------- */
+let weather = null;
+function weatherEmoji(main){
+  const m = { Clear:'☀️', Clouds:'☁️', Rain:'🌧️', Drizzle:'🌦️', Thunderstorm:'⛈️', Snow:'❄️', Mist:'🌫️', Fog:'🌫️' };
+  return m[main] || '🌤️';
+}
+function renderWeather(){
+  if (weather){
+    document.getElementById('weatherTemp').textContent = weather.temp + '°' + weather.unit;
+    document.getElementById('weatherIcon').textContent = weatherEmoji(weather.main);
+  }
+  document.getElementById('weather').classList.toggle('hidden', !weather);
+}
+
+/* ---------------- Calendar (Module 3) ---------------- */
+function localDateKey(d){
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function calendarHeading(date, isToday){
+  const dd = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleDateString([], { month: 'short' });
+  if (isToday) return 'TODAY . ' + dd + '-' + month;
+  return date.toLocaleDateString([], { weekday: 'short' }).toUpperCase() + ' . ' + dd + '-' + month;
+}
+
+let lastEvents = null;
+function renderCalendar(){
+  const container = document.getElementById('calendarDays');
+  if (!lastEvents){ return; }
+  const days = parseInt(cfg.calendarDays, 10) || 1;
+  const now = new Date();
+  const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayList = [], byKey = {};
+  for (let i = 0; i < days; i++){
+    const d = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate() + i);
+    const entry = { date: d, items: [] };
+    dayList.push(entry); byKey[localDateKey(d)] = entry;
+  }
+  lastEvents.forEach(ev => {
+    if (ev.start && ev.start.dateTime){
+      const startDt = new Date(ev.start.dateTime);
+      const entry = byKey[localDateKey(startDt)];
+      if (entry) entry.items.push({ time: startDt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), title: ev.summary, allDay: false });
+    } else if (ev.start && ev.start.date){
+      const s = ev.start.date.split('-').map(Number);
+      const start = new Date(s[0], s[1] - 1, s[2]);
+      let end = new Date(s[0], s[1] - 1, s[2] + 1);
+      if (ev.end && ev.end.date){ const e = ev.end.date.split('-').map(Number); end = new Date(e[0], e[1] - 1, e[2]); }
+      for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)){
+        const entry = byKey[localDateKey(d)];
+        if (entry) entry.items.push({ time: 'All day', title: ev.summary, allDay: true });
+      }
+    }
+  });
+  container.classList.toggle('compact', days >= 5);
+  container.textContent = '';
+  dayList.forEach((entry, i) => {
+    const col = document.createElement('div'); col.className = 'cal-day-col';
+    const head = document.createElement('div');
+    head.className = 'cal-day-heading' + (i === 0 ? ' is-today' : '');
+    head.textContent = calendarHeading(entry.date, i === 0);
+    col.appendChild(head);
+    const items = entry.items.slice().sort((a, b) => (b.allDay ? 1 : 0) - (a.allDay ? 1 : 0));
+    if (!items.length){
+      const none = document.createElement('div'); none.className = 'agenda-empty';
+      none.textContent = i === 0 ? 'Nothing on the calendar today.' : 'Nothing scheduled.';
+      col.appendChild(none);
+    }
+    items.forEach(ev => {
+      const row = document.createElement('div'); row.className = 'event';
+      const t = document.createElement('div'); t.className = 'time'; t.textContent = ev.time;
+      const n = document.createElement('div'); n.className = 'title'; n.textContent = ev.title || 'Untitled event';
+      row.appendChild(t); row.appendChild(n); col.appendChild(row);
+    });
+    container.appendChild(col);
+  });
+}
+
+/* ---------------- Tasks (Module 4) ---------------- */
+let taskMessages = [];
+let taskPos = 0;
+function advanceTaskMessage(){
+  const el = document.getElementById('module4Text');
+  const text = taskMessages.length ? taskMessages[taskPos % taskMessages.length] : 'Nothing on your task list right now.';
+  taskPos++;
+  el.style.opacity = 0;
+  setTimeout(() => { el.textContent = text; el.style.opacity = 1; }, 400);
+}
+
+/* ---------------- Photos (Module 2) ---------------- */
+// The relay sends each photo already resized to screen size (about 400 KB), one
+// at a time; at most two are held in memory.
+let photoFiles = [];
+let photoOrder = [];   // shuffled playlist of indexes into photoFiles
+let photoPos = 0;
+let previousPhotoUrl = null;
+let photoBusy = false;
+
+function b64ToBlobUrl(mime, b64){
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type: mime }));
+}
+
+// Random order with no repeats until every photo has been shown. A new round
+// never starts with the photo that just finished the last one.
+function buildPhotoOrder(){
+  const last = photoOrder.length ? photoOrder[photoOrder.length - 1] : -1;
+  photoOrder = photoFiles.map((_, i) => i);
+  for (let i = photoOrder.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [photoOrder[i], photoOrder[j]] = [photoOrder[j], photoOrder[i]];
+  }
+  if (photoOrder.length > 1 && photoOrder[0] === last){
+    const j = 1 + Math.floor(Math.random() * (photoOrder.length - 1));
+    [photoOrder[0], photoOrder[j]] = [photoOrder[j], photoOrder[0]];
+  }
+  photoPos = 0;
+}
+
+async function advancePhoto(){
+  if (!photoFiles.length || photoBusy) return;
+  photoBusy = true;
+  try{
+    if (photoPos >= photoOrder.length) buildPhotoOrder();
+    const file = photoFiles[photoOrder[photoPos++]];
+    if (!file) return;
+    const r = await relayGet('action=photo&id=' + encodeURIComponent(file.id));
+    if (!r.ok) return;
+    const url = b64ToBlobUrl(r.mime, r.data);
+    const layer = document.getElementById('photoLayer');
+    const div = document.createElement('div');
+    div.className = 'photo';
+    div.style.backgroundImage = 'url(' + url + ')';
+    layer.appendChild(div);
+    requestAnimationFrame(() => div.classList.add('active'));
+    layer.querySelectorAll('.photo:not(:last-child)').forEach(o => setTimeout(() => o.remove(), 2600));
+    if (previousPhotoUrl) URL.revokeObjectURL(previousPhotoUrl);
+    previousPhotoUrl = url;
+  }catch(e){
+    console.error('Photo fetch failed', e);
+  }finally{
+    photoBusy = false;
+  }
+}
+
+/* ---------------- Polling the relay ---------------- */
+async function pullSettings(){
+  try{
+    const r = await relayGet('action=settings');
+    if (!r.ok) return;
+    const incoming = r.settings || {};
+    const before = JSON.stringify(cfg);
+    if (JSON.stringify(incoming) === before) return;
+    const daysChanged = String(incoming.calendarDays) !== String(cfg.calendarDays);
+    const cityChanged = incoming.city !== cfg.city || incoming.tempUnit !== cfg.tempUnit;
+    cfg = incoming;
+    lsSet(SETTINGS_CACHE_KEY, JSON.stringify(cfg));
+    applyTheme();
+    tickClock();
+    checkSchedule();
+    if (lastEvents) renderCalendar();
+    if (daysChanged || cityChanged) pullData();
+  }catch(e){ console.warn('Settings poll failed', e); }
+}
+
+async function pullData(){
+  try{
+    const d = await relayGet('action=data');
+    if (!d.ok) return;
+    const errs = d.errors || {};
+    if (!errs.calendar){ lastEvents = d.events || []; renderCalendar(); }
+    else if (!lastEvents) document.getElementById('calendarDays').innerHTML = '<div class="agenda-msg">Could not load calendar.</div>';
+    if (!errs.tasks) taskMessages = d.tasks || [];
+    if (!errs.photos){
+      const oldIds = photoFiles.map(f => f.id).join();
+      photoFiles = d.photos || [];
+      if (photoFiles.map(f => f.id).join() !== oldIds) photoOrder = [], photoPos = 0;
+      document.getElementById('photoEmpty').style.display = photoFiles.length ? 'none' : 'flex';
+      if (photoFiles.length && currentModule === 2 && !document.querySelector('#photoLayer .photo')) advancePhoto();
+    }
+    if (!errs.weather){ weather = d.weather || null; renderWeather(); }
+  }catch(e){ console.warn('Data poll failed', e); }
+}
+
+/* ---------------- Connect screen + boot ---------------- */
+function showConnect(msg){
+  document.getElementById('connect').classList.add('open');
+  document.getElementById('connectMsg').textContent = msg || '';
+}
+
+document.getElementById('connectBtn').addEventListener('click', async () => {
+  const url = document.getElementById('relayUrlInput').value.trim();
+  const key = document.getElementById('relayKeyInput').value.trim();
+  if (!url || !key){ showConnect('Enter both the address and the key.'); return; }
+  conn = { url, key };
+  try{
+    const r = await relayGet('action=ping');
+    if (!r.ok) throw new Error('bad reply');
+  }catch(e){
+    conn = null;
+    showConnect('Could not connect - check the address and key.');
+    return;
+  }
+  lsSet(CONN_KEY, JSON.stringify(conn));
+  document.getElementById('connect').classList.remove('open');
+  start();
+});
+
+let started = false;
+function start(){
+  if (started) return;
+  started = true;
+  applyTheme();
+  checkSchedule();
+  pullSettings().then(pullData);
+  setInterval(pullSettings, 30 * 1000);
+  setInterval(pullData, 5 * 60 * 1000);
+}
+
+window.addEventListener('load', () => {
+  tickClock();
+  applyTheme();
+  if (conn && conn.url && conn.key) start(); else showConnect();
+
+  if ('serviceWorker' in navigator){
+    navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).catch(() => {});
+    let hasReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hasReloaded) return;
+      hasReloaded = true;
+      window.location.reload();
+    });
+  }
+});
+</script>
+</body>
+</html>
