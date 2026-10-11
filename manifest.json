@@ -2,7 +2,7 @@
   "name": "Homeglass",
   "short_name": "Homeglass",
   "description": "Ambient home dashboard — time, weather, calendar, and photos.",
-  "start_url": "./index.html",
+  "start_url": "./display.html",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "any",
