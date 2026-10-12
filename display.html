@@ -605,6 +605,18 @@ async function pullData(){
   }catch(e){ console.warn('Data poll failed', e); }
 }
 
+/* ---------------- Nightly refresh ---------------- */
+// The display never reloads on its own, so once a night (about 4am) it reloads
+// itself. That clears memory on the old iPad and picks up any new page version.
+setInterval(() => {
+  const now = new Date();
+  if (now.getHours() !== 4) return;
+  const today = now.toDateString();
+  if (lsGet('homeglass_nightly') === today) return;
+  lsSet('homeglass_nightly', today);
+  location.reload();
+}, 60 * 1000);
+
 /* ---------------- Connect screen + boot ---------------- */
 function showConnect(msg){
   document.getElementById('connect').classList.add('open');
@@ -646,7 +658,9 @@ window.addEventListener('load', () => {
   if (conn && conn.url && conn.key) start(); else showConnect();
 
   if ('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).catch(() => {});
+    navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+      .then((reg) => { setInterval(() => { reg.update().catch(() => {}); }, 60 * 60 * 1000); })   // look for a new version every hour
+      .catch(() => {});
     let hasReloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (hasReloaded) return;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'homeglass-shell-v27';
+const CACHE_NAME = 'homeglass-shell-v28';
 const SHELL_FILES = [
   './',
   './display.html',
@@ -7,9 +7,13 @@ const SHELL_FILES = [
   './icon-512.png'
 ];
 
+// 'reload' skips the browser's own HTTP cache, so a new install can never
+// store a stale copy of a file that was published a few minutes ago.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(SHELL_FILES.map((u) => cache.add(new Request(u, { cache: 'reload' }))))
+    )
   );
   self.skipWaiting();
 });
@@ -23,18 +27,22 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// App-shell files: cache-first (so the frame launches instantly, even offline).
-// Everything else (Google APIs, weather, photo blobs, fonts): always network,
-// never cached, since that data must stay fresh and some of it is per-token.
+// Our own files: network first (so updates always arrive), falling back to the
+// saved copy only when offline. Everything else is left to the browser.
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  const isShellFile = url.origin === self.location.origin;
-
-  if (!isShellFile) return; // let the browser handle it normally
+  const req = event.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    fetch(req, { cache: 'no-cache' })
+      .then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
