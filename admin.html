@@ -229,9 +229,14 @@
       <div class="field row-inline"><label>Heading color (TODAY, THU...)</label><input type="color" id="calendarHeadingColor" value="#A9A79F"></div>
       <div class="field row-inline"><label>Event time color</label><input type="color" id="accentColor" value="#9FB89A"></div>
       <div class="field row-inline"><label>Event title color</label><input type="color" id="calendarEntryColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Today box: background</label><input type="color" id="calTodayBg" value="#2a3326"></div>
+      <div class="field row-inline"><label>Today box: line under date</label><input type="color" id="calTodayLine" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Today box: outline</label><input type="color" id="calTodayBorder" value="#6f8a6a"></div>
+      <div class="field row-inline"><label>Other days: background</label><input type="color" id="calOtherBg" value="#1a1c1a"></div>
+      <div class="field row-inline"><label>Other days: line under date</label><input type="color" id="calOtherLine" value="#4a4c49"></div>
+      <div class="field row-inline"><label>Other days: outline</label><input type="color" id="calOtherBorder" value="#343534"></div>
 
       <div class="divider">MODULE 4 — TASKS</div>
-      <div class="field checkbox-field"><label><input type="checkbox" id="showTasks"> Enable Module 4 when scheduled</label></div>
       <div class="field">
         <label>Task refresh rate</label>
         <div class="range-row"><input type="range" id="taskInterval" min="10" max="300" step="5"><span class="val" id="taskIntervalVal"></span></div>
@@ -352,9 +357,9 @@ const ALL_FIELDS = [
   'module1TextColor', 'module1Bold', 'module1TimeFormat', 'module1ShowSeconds',
   'module2Position', 'weatherPosition',
   'timeFormat', 'showSeconds', 'dateFormat', 'tempUnit',
-  'font', 'accentColor', 'calendarHeadingColor', 'calendarEntryColor',
+  'font', 'accentColor', 'calendarHeadingColor', 'calendarEntryColor', 'calTodayBg', 'calOtherBg', 'calTodayLine', 'calOtherLine', 'calTodayBorder', 'calOtherBorder',
   'calendarDays',
-  'showTasks', 'taskFont', 'taskBgColor', 'taskTextColor',
+  'taskFont', 'taskBgColor', 'taskTextColor',
   'alertEnabled', 'alertFont', 'alertBgColor', 'alertTextColor',
   ...RANGE_FIELDS,
   ...INTERVAL_FIELDS

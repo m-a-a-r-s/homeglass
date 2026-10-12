@@ -35,6 +35,8 @@
     --agenda-scale: 1.4;
     --cal-heading: rgba(245,242,234,.62);
     --cal-entry: #F5F2EA;
+    --cal-today-bg: #2a3326; --cal-today-line: #9FB89A; --cal-today-border: #6f8a6a;
+    --cal-other-bg: #1a1c1a; --cal-other-line: #4a4c49; --cal-other-border: #343534;
     --module1-font: 'Fraunces', serif;
     --module1-scale: 1;
     --module1-text: #F5F2EA;
@@ -101,17 +103,21 @@
   #calendarDays{display:flex; gap:calc(14px * var(--agenda-scale)); justify-content:center; align-items:stretch;}
   .cal-day-col{
     flex:1; min-width:0;
-    background:rgba(245,242,234,.06);
-    border:1px solid var(--glass-border);
+    background:var(--cal-other-bg);
+    border:1px solid var(--cal-other-border);
     border-radius:18px;
     padding:calc(16px * var(--agenda-scale)) calc(18px * var(--agenda-scale));
   }
-  .cal-day-heading{font-size:calc(13px * var(--agenda-scale)); font-weight:600; letter-spacing:.04em; color:var(--cal-heading); margin-bottom:12px; white-space:nowrap;}
+  .cal-day-col.is-today{background:var(--cal-today-bg); border-color:var(--cal-today-border);}
+  .cal-day-heading{font-size:calc(13px * var(--agenda-scale)); font-weight:600; letter-spacing:.04em; color:var(--cal-heading); margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--cal-other-line); white-space:nowrap;}
+  .cal-day-col.is-today .cal-day-heading{border-bottom-color:var(--cal-today-line);}
+  /* One day with 0-1 entries: a narrower, taller box instead of a wide one. */
+  #agenda.sparse-one{width:min(56vh, 92vw);}
   .cal-day-heading.is-today{font-weight:700;}
   /* Time and event text sit a "double space" apart (0.55em of the title's size),
      rather than the time sitting in a fixed-width column. */
   .event{display:flex; align-items:baseline; gap:0.55em; font-size:calc(15px * var(--agenda-scale)); padding:11px 0; border-top:1px solid rgba(245,242,234,.08);}
-  .event:first-of-type{border-top:none;}
+  .event:first-of-type, .cal-day-heading + .event{border-top:none;}
   .event .time{font-size:calc(13px * var(--agenda-scale)); color:var(--accent); flex-shrink:0; white-space:nowrap;}
   .event .title{font-size:calc(15px * var(--agenda-scale)); font-weight:500; min-width:0; flex:1; overflow-wrap:anywhere; color:var(--cal-entry);}
   #calendarDays.compact .event{flex-direction:column; align-items:stretch; gap:2px;}
@@ -271,6 +277,9 @@ function applyTheme(){
   root.setProperty('--accent', cfg.accentColor || '#9FB89A');
   root.setProperty('--cal-heading', cfg.calendarHeadingColor || 'rgba(245,242,234,.62)');
   root.setProperty('--cal-entry', cfg.calendarEntryColor || '#F5F2EA');
+  const calVars = { calTodayBg: ['--cal-today-bg', '#2a3326'], calTodayLine: ['--cal-today-line', '#9FB89A'], calTodayBorder: ['--cal-today-border', '#6f8a6a'],
+    calOtherBg: ['--cal-other-bg', '#1a1c1a'], calOtherLine: ['--cal-other-line', '#4a4c49'], calOtherBorder: ['--cal-other-border', '#343534'] };
+  Object.keys(calVars).forEach(k => root.setProperty(calVars[k][0], cfg[k] || calVars[k][1]));
   root.setProperty('--task-bg', cfg.taskBgColor || '#12160f');
   root.setProperty('--task-text', cfg.taskTextColor || '#F5F2EA');
   root.setProperty('--task-scale', cfg.taskScale || 1);
@@ -310,7 +319,6 @@ function getScheduledModule(){
   if (cfg.alertEnabled) return 5;
   const arr = Array.isArray(cfg.schedule) ? cfg.schedule : [];
   let m = arr[new Date().getHours()] || 1;
-  if (m === 4 && cfg.showTasks === false) m = 1;
   return m;
 }
 
@@ -342,6 +350,7 @@ function activateModule(m){
   if (m !== 4 && taskTimer){ clearInterval(taskTimer); taskTimer = null; }
   applyClockPlacement();
   tickClock();
+  if (m === 3) sizeCalendarBoxes();
   if (m === 2){ advancePhoto(); photoTimer = setInterval(advancePhoto, (cfg.photoInterval || 45) * 1000); }
   if (m === 4){ advanceTaskMessage(); taskTimer = setInterval(advanceTaskMessage, (cfg.taskInterval || 45) * 1000); }
 }
@@ -449,7 +458,8 @@ function renderCalendar(){
   container.classList.toggle('compact', days >= 5);
   container.textContent = '';
   dayList.forEach((entry, i) => {
-    const col = document.createElement('div'); col.className = 'cal-day-col';
+    const col = document.createElement('div'); col.className = 'cal-day-col' + (i === 0 ? ' is-today' : '');
+    col.dataset.count = entry.items.length;
     const head = document.createElement('div');
     head.className = 'cal-day-heading' + (i === 0 ? ' is-today' : '');
     head.textContent = calendarHeading(entry.date, i === 0);
@@ -468,7 +478,25 @@ function renderCalendar(){
     });
     container.appendChild(col);
   });
+  sizeCalendarBoxes();
 }
+
+// Boxes holding 0 or 1 entries are given extra height so they are taller than
+// they are wide. Measured in JS (not aspect-ratio) so it behaves the same on old iPads.
+function sizeCalendarBoxes(){
+  const agenda = document.getElementById('agenda');
+  const cols = Array.from(document.querySelectorAll('#calendarDays .cal-day-col'));
+  if (!cols.length) return;
+  const oneDay = cols.length === 1;
+  agenda.classList.toggle('sparse-one', oneDay && Number(cols[0].dataset.count) <= 1);
+  cols.forEach(col => {
+    col.style.minHeight = '';
+    if (Number(col.dataset.count) <= 1 && col.offsetWidth > 0){
+      col.style.minHeight = Math.round(col.offsetWidth * 1.3) + 'px';
+    }
+  });
+}
+window.addEventListener('resize', sizeCalendarBoxes);
 
 /* ---------------- Tasks (Module 4) ---------------- */
 let taskMessages = [];
