@@ -226,15 +226,31 @@
         <div class="range-row"><input type="range" id="agendaScale" min="1" max="2.2" step="0.1"><span class="val" id="agendaScaleVal"></span></div>
       </div>
 
-      <div class="field row-inline"><label>Heading color (TODAY, THU...)</label><input type="color" id="calendarHeadingColor" value="#A9A79F"></div>
-      <div class="field row-inline"><label>Event time color</label><input type="color" id="accentColor" value="#9FB89A"></div>
-      <div class="field row-inline"><label>Event title color</label><input type="color" id="calendarEntryColor" value="#F5F2EA"></div>
-      <div class="field row-inline"><label>Today box: background</label><input type="color" id="calTodayBg" value="#2a3326"></div>
-      <div class="field row-inline"><label>Today box: line under date</label><input type="color" id="calTodayLine" value="#9FB89A"></div>
-      <div class="field row-inline"><label>Today box: outline</label><input type="color" id="calTodayBorder" value="#6f8a6a"></div>
-      <div class="field row-inline"><label>Other days: background</label><input type="color" id="calOtherBg" value="#1a1c1a"></div>
-      <div class="field row-inline"><label>Other days: line under date</label><input type="color" id="calOtherLine" value="#4a4c49"></div>
-      <div class="field row-inline"><label>Other days: outline</label><input type="color" id="calOtherBorder" value="#343534"></div>
+      <div class="field row-inline"><label>Page background</label><input type="color" id="calPageBg" value="#0a0c0a"></div>
+
+      <div class="divider">TODAY BOX</div>
+      <div class="field row-inline"><label>Background color</label><input type="color" id="calTodayBgColor" value="#9FB89A"></div>
+      <div class="field">
+        <label>Background fill (opacity)</label>
+        <div class="range-row"><input type="range" id="calTodayBgOpacity" min="0" max="1" step="0.02" value="0.18"><span class="val" id="calTodayBgOpacityVal"></span></div>
+      </div>
+      <div class="field row-inline"><label>Outline</label><input type="color" id="calTodayBorderColor" value="#6f8a6a"></div>
+      <div class="field row-inline"><label>Heading text</label><input type="color" id="calTodayHeadingColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Line under heading</label><input type="color" id="calTodayLineColor" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Event time</label><input type="color" id="calTodayTimeColor" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Event title / "nothing scheduled"</label><input type="color" id="calTodayTitleColor" value="#F5F2EA"></div>
+
+      <div class="divider">OTHER DAYS</div>
+      <div class="field row-inline"><label>Background color</label><input type="color" id="calOtherBgColor" value="#F5F2EA"></div>
+      <div class="field">
+        <label>Background fill (opacity)</label>
+        <div class="range-row"><input type="range" id="calOtherBgOpacity" min="0" max="1" step="0.02" value="0.06"><span class="val" id="calOtherBgOpacityVal"></span></div>
+      </div>
+      <div class="field row-inline"><label>Outline</label><input type="color" id="calOtherBorderColor" value="#343534"></div>
+      <div class="field row-inline"><label>Heading text</label><input type="color" id="calOtherHeadingColor" value="#A9A79F"></div>
+      <div class="field row-inline"><label>Line under heading</label><input type="color" id="calOtherLineColor" value="#4a4c49"></div>
+      <div class="field row-inline"><label>Event time</label><input type="color" id="calOtherTimeColor" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Event title / "nothing scheduled"</label><input type="color" id="calOtherTitleColor" value="#F5F2EA"></div>
 
       <div class="divider">MODULE 4 — TASKS</div>
       <div class="field">
@@ -349,7 +365,7 @@ function buildScheduleUI(){
   }
 }
 
-const RANGE_FIELDS = ['module1Scale', 'timeScale', 'weatherScale', 'weatherIconScale', 'agendaScale', 'taskScale', 'alertScale'];
+const RANGE_FIELDS = ['calTodayBgOpacity', 'calOtherBgOpacity', 'module1Scale', 'timeScale', 'weatherScale', 'weatherIconScale', 'agendaScale', 'taskScale', 'alertScale'];
 const INTERVAL_FIELDS = ['photoInterval', 'taskInterval'];
 const ALL_FIELDS = [
   'city',
@@ -357,7 +373,7 @@ const ALL_FIELDS = [
   'module1TextColor', 'module1Bold', 'module1TimeFormat', 'module1ShowSeconds',
   'module2Position', 'weatherPosition',
   'timeFormat', 'showSeconds', 'dateFormat', 'tempUnit',
-  'font', 'accentColor', 'calendarHeadingColor', 'calendarEntryColor', 'calTodayBg', 'calOtherBg', 'calTodayLine', 'calOtherLine', 'calTodayBorder', 'calOtherBorder',
+  'font', 'calPageBg', 'calTodayBgColor', 'calTodayBorderColor', 'calTodayHeadingColor', 'calTodayLineColor', 'calTodayTimeColor', 'calTodayTitleColor', 'calOtherBgColor', 'calOtherBorderColor', 'calOtherHeadingColor', 'calOtherLineColor', 'calOtherTimeColor', 'calOtherTitleColor',
   'calendarDays',
   'taskFont', 'taskBgColor', 'taskTextColor',
   'alertEnabled', 'alertFont', 'alertBgColor', 'alertTextColor',
