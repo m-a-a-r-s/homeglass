@@ -61,6 +61,28 @@
   .schedule-hour{font-size:11px; color:var(--dim); width:100px; flex-shrink:0;}
   .schedule-select{flex:1; padding:5px 6px; font-size:12px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,.04); color:var(--paper); font-family:inherit;}
   .schedule-note{font-size:11px; color:var(--dim); line-height:1.6; margin-bottom:14px;}
+
+  .status-card{border:1px solid var(--border);border-radius:12px;padding:16px 16px 6px;margin-bottom:6px;background:rgba(255,255,255,.025)}
+  .st-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;background:#888}
+  .dot.ok{background:#7fc28a;box-shadow:0 0 0 4px rgba(127,194,138,.18)}
+  .dot.warn{background:#e6b450;box-shadow:0 0 0 4px rgba(230,180,80,.18)}
+  .dot.bad{background:#e57373;box-shadow:0 0 0 4px rgba(229,115,115,.18)}
+  .st-title{font-weight:600;font-size:15px}
+  .st-sub{font-size:12px;color:var(--dim);margin-left:auto;text-align:right}
+  .st-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .stat{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .stat .n{font-family:'Fraunces', serif;font-weight:600;font-size:26px;line-height:1.1}
+  .stat .l{font-size:11px;color:var(--dim);margin-top:3px;letter-spacing:.02em}
+  .stat .s{font-size:11px;color:var(--accent);margin-top:2px}
+  .st-rows{border-top:1px solid var(--border);padding-top:4px}
+  .st-row{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:7px 0;border-bottom:1px solid rgba(245,242,234,.08)}
+  .st-row:last-child{border-bottom:none}
+  .st-row span:first-child{color:var(--dim);flex-shrink:0}
+  .st-row span:last-child{text-align:right}
+  .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;margin-left:4px}
+  .tag.ok{background:rgba(127,194,138,.18);color:#9ad8a4}.tag.warn{background:rgba(230,180,80,.18);color:#f0c76e}.tag.bad{background:rgba(229,115,115,.18);color:#f19a9a}
+  .refresh{margin:10px 0 12px;padding:9px;font-size:13px}
 </style>
 </head>
 <body>
@@ -86,6 +108,25 @@
     </div>
 
     <form id="settingsForm">
+      <div class="divider">DISPLAY STATUS</div>
+      <div class="status-card">
+        <div class="st-head"><span class="dot" id="stDot"></span><span class="st-title" id="stTitle">Checking…</span><span class="st-sub" id="stSub"></span></div>
+        <div class="st-grid">
+          <div class="stat"><div class="n" id="stPhotos">–</div><div class="l">PHOTOS IN DRIVE</div><div class="s" id="stPhotosSub">showing in shuffle</div></div>
+          <div class="stat"><div class="n" id="stTasks">–</div><div class="l">TASKS</div><div class="s">open on your list</div></div>
+          <div class="stat"><div class="n" id="stCal">–</div><div class="l">CALENDAR ENTRIES</div><div class="s" id="stCalSub">next 7 days</div></div>
+          <div class="stat"><div class="n" style="font-size:20px;padding-top:5px">Air 2</div><div class="l">DISPLAY</div><div class="s" id="stScreen">–</div></div>
+        </div>
+        <div class="st-rows">
+          <div class="st-row"><span>Version running</span><span id="stVersion">–</span></div>
+          <div class="st-row"><span>Last report</span><span id="stSeen">–</span></div>
+          <div class="st-row"><span>Showing now</span><span id="stShowing">–</span></div>
+          <div class="st-row"><span>Last data refresh</span><span id="stRefresh">–</span></div>
+          <div class="st-row"><span>Battery</span><span id="stBattery">–</span></div>
+          <div class="st-row"><span>Relay errors</span><span id="stErrors">–</span></div>
+        </div>
+      </div>
+      <button class="secondary refresh" type="button" id="stRefreshBtn">Refresh status</button>
       <div class="divider">WEATHER LOCATION</div>
       <div class="field">
         <label>City for weather, e.g. Seattle,US (blank = no weather shown)</label>
@@ -466,6 +507,78 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
   }
 });
 
+
+/* ---------------- Display status ---------------- */
+const LATEST_VERSION = 35;   // the display version that ships with this admin file
+const MODULE_NAMES = { 1: 'Module 1 – Clock', 2: 'Module 2 – Photos', 3: 'Module 3 – Calendar', 4: 'Module 4 – Tasks', 5: 'Alert' };
+function el(id){ return document.getElementById(id); }
+function ago(ms){
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.floor(m / 60);
+  if (h < 48) return h + ' h ' + (m % 60) + ' min ago';
+  return Math.round(h / 24) + ' days ago';
+}
+function clockText(ts){
+  const d = new Date(ts), now = new Date();
+  const hm = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (d.toDateString() === now.toDateString()) return 'Today ' + hm;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'Yesterday ' + hm;
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + hm;
+}
+function renderStatus(r){
+  const now = r.now || Date.now(), disp = r.display, c = r.counts || {}, bat = r.battery;
+  const max = r.maxPhotos || 300;
+  el('stPhotos').textContent = c.photos == null ? '–' : (c.photos >= max ? max + '+' : c.photos);
+  el('stPhotosSub').textContent = 'showing in shuffle · limit ' + max;
+  el('stTasks').textContent = c.tasks == null ? '–' : c.tasks;
+  el('stCal').textContent = c.events7 == null ? '–' : c.events7;
+  el('stCalSub').textContent = 'next 7 days' + (c.eventsToday == null ? '' : ' · ' + c.eventsToday + ' today');
+
+  const dot = el('stDot');
+  if (!disp){
+    dot.className = 'dot';
+    el('stTitle').textContent = 'No report from the display yet';
+    el('stSub').textContent = 'needs the latest display version';
+    ['stVersion', 'stSeen', 'stShowing', 'stRefresh'].forEach(id => el(id).textContent = '–');
+    el('stScreen').textContent = '–';
+  } else {
+    const age = now - disp.seen;
+    dot.className = 'dot ' + (age < 15 * 60000 ? 'ok' : age < 60 * 60000 ? 'warn' : 'bad');
+    el('stTitle').textContent = age < 15 * 60000 ? 'Display online' : age < 60 * 60000 ? 'Display quiet' : 'Display not responding';
+    el('stSub').textContent = 'last seen ' + ago(age);
+    const v = disp.v;
+    const tag = v === LATEST_VERSION ? '<span class="tag ok">up to date</span>'
+      : v < LATEST_VERSION ? '<span class="tag warn">behind — latest is v' + LATEST_VERSION + '</span>'
+      : '<span class="tag ok">newer than this admin page</span>';
+    el('stVersion').innerHTML = 'v' + v + ' ' + tag;
+    el('stSeen').textContent = clockText(disp.seen);
+    el('stShowing').textContent = MODULE_NAMES[disp.mod] || '–';
+    el('stRefresh').textContent = disp.dataAt ? clockText(disp.dataAt) : '–';
+    el('stScreen').textContent = disp.w ? (disp.w > disp.h ? 'landscape' : 'portrait') + ' · ' + disp.w + '×' + disp.h : '–';
+  }
+  if (bat){
+    const low = bat.level < 20 && bat.charging !== true;
+    el('stBattery').innerHTML = bat.level + '%' + (bat.charging ? ' · charging' : '') + ' · ' + ago(now - bat.seen) + (low ? ' <span class="tag bad">low</span>' : '');
+  } else {
+    el('stBattery').textContent = 'No reading yet';
+  }
+  const errs = [];
+  if (disp && disp.err) errs.push(disp.err);
+  (c.errors || []).forEach(e => errs.push(e));
+  el('stErrors').textContent = errs.length ? errs.join('; ').slice(0, 160) : 'None';
+}
+async function loadStatus(){
+  try{
+    const r = await relayGet('action=status');
+    if (r.ok) renderStatus(r); else el('stTitle').textContent = r.error || 'Status unavailable';
+  }catch(err){ el('stTitle').textContent = 'Status unavailable'; el('stSub').textContent = String(err.message || err).slice(0, 60); }
+}
+el('stRefreshBtn').addEventListener('click', loadStatus);
+setInterval(() => { if (el('settingsForm').style.display === 'block' && !document.hidden) loadStatus(); }, 60000);
+
 function showForm(data){
   if (Array.isArray(data.schedule) && data.schedule.length === 24) currentSchedule = data.schedule;
   buildScheduleUI();
@@ -506,6 +619,7 @@ function showForm(data){
   document.getElementById('signInSection').style.display = 'none';
   document.getElementById('settingsForm').style.display = 'block';
   setStatus('Unlocked. Make your changes and tap Save.');
+  loadStatus();
 }
 
 document.getElementById('settingsForm').addEventListener('submit', async (e) => {

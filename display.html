@@ -348,6 +348,8 @@ function applyTheme(){
 }
 
 /* ---------------- Schedule / module switching ---------------- */
+const BUILD = 35;   // shown in the admin page's status box; bump with each release
+let lastDataAt = 0, lastDataErr = '';
 let currentModule = null;
 let photoTimer = null;
 let taskTimer = null;
@@ -381,6 +383,7 @@ function applyClockPlacement(){
 function activateModule(m){
   if (m === currentModule){ applyClockPlacement(); restartTimers(); return; }
   currentModule = m;
+  if (started) setTimeout(sendReport, 1500);
   [1, 2, 3, 4, 5].forEach(n => document.getElementById('module' + n).classList.remove('active'));
   document.getElementById('module' + m).classList.add('active');
   if (m !== 2 && photoTimer){ clearInterval(photoTimer); photoTimer = null; }
@@ -714,6 +717,8 @@ async function pullData(){
     const d = await relayGet('action=data');
     if (!d.ok) return;
     const errs = d.errors || {};
+    lastDataAt = Date.now();
+    lastDataErr = Object.keys(errs).map(k => k + ': ' + errs[k]).join('; ');
     if (!errs.calendar){ lastEvents = d.events || []; renderCalendar(); }
     else if (!lastEvents) document.getElementById('calendarDays').innerHTML = '<div class="agenda-msg">Could not load calendar.</div>';
     if (!errs.tasks) taskMessages = d.tasks || [];
@@ -725,7 +730,21 @@ async function pullData(){
       if (photoFiles.length && currentModule === 2 && !document.querySelector('#photoLayer .photo')) advancePhoto();
     }
     if (!errs.weather){ weather = d.weather || null; renderWeather(); }
+    sendReport();
   }catch(e){ console.warn('Data poll failed', e); }
+}
+
+/* Tells the relay which version is running, what is on screen and when data last refreshed,
+   so the admin page can show a status box. Failure is harmless. */
+let reportBusy = false;
+async function sendReport(){
+  if (reportBusy || !conn) return;
+  reportBusy = true;
+  try{
+    await relayGet('action=report&v=' + BUILD + '&m=' + (currentModule || 0) + '&dr=' + lastDataAt +
+      '&err=' + encodeURIComponent(lastDataErr.slice(0, 200)) + '&w=' + innerWidth + '&h=' + innerHeight);
+  }catch(e){ /* ignore */ }
+  reportBusy = false;
 }
 
 /* ---------------- Nightly refresh ---------------- */
