@@ -179,6 +179,16 @@
   .connect-card input{width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(255,255,255,.04); color:var(--paper); font-size:16px; font-family:inherit;}
   .connect-card button{margin-top:20px; width:100%; background:var(--accent); color:#12160f; border:none; border-radius:8px; padding:12px; font-size:15px; font-weight:600; cursor:pointer;}
   #connectMsg{font-size:13px; margin-top:12px; color:#ff8a80; min-height:18px;}
+
+  /* Hidden helper: hold the clock for 3 seconds to copy the battery-Shortcut address (see relay/BATTERY-SHORTCUT.md). */
+  #batterySetup{position:fixed; inset:0; z-index:70; display:none; align-items:center; justify-content:center; background:rgba(5,7,5,.92); padding:24px;}
+  #batterySetup.open{display:flex;}
+  #batterySetup .box{width:520px; max-width:100%; background:#15170f; border:1px solid var(--glass-border); border-radius:16px; padding:26px; text-align:center;}
+  #batterySetup h2{font-family:'Fraunces', serif; font-weight:500; font-size:22px; margin:0 0 8px;}
+  #batterySetup p{font-size:14px; color:var(--dim); line-height:1.5; margin:0 0 16px;}
+  #batterySetup button{width:100%; border:none; border-radius:8px; padding:14px; font-size:16px; font-weight:600; margin-top:10px; background:var(--accent); color:#12160f;}
+  #batterySetup button.secondary{background:transparent; color:var(--dim); border:1px solid var(--glass-border);}
+  #batterySetup .mask{font-size:12px; color:var(--dim); word-break:break-all; margin-bottom:6px; font-family:monospace;}
   .hidden{display:none !important;}
 </style>
 </head>
@@ -223,6 +233,14 @@
 </div>
 
 
+<div id="batterySetup"><div class="box">
+  <h2>Battery Shortcut address</h2>
+  <p>Tap Copy, then paste it into the Text action in Shortcuts and add the Battery Level variable after <b>level=</b>.</p>
+  <div class="mask" id="batteryMask"></div>
+  <textarea id="batteryText" readonly style="position:absolute;left:-9999px;top:0;"></textarea>
+  <button id="batteryCopy" type="button">Copy</button>
+  <button class="secondary" id="batteryClose" type="button">Close</button>
+</div></div>
 <div id="connect">
   <div class="connect-card">
     <h2>Connect this display</h2>
@@ -348,7 +366,7 @@ function applyTheme(){
 }
 
 /* ---------------- Schedule / module switching ---------------- */
-const BUILD = 35;   // shown in the admin page's status box; bump with each release
+const BUILD = 36;   // shown in the admin page's status box; bump with each release
 let lastDataAt = 0, lastDataErr = '';
 let currentModule = null;
 let photoTimer = null;
@@ -746,6 +764,38 @@ async function sendReport(){
   }catch(e){ /* ignore */ }
   reportBusy = false;
 }
+
+
+/* ---------------- Hidden battery-Shortcut helper ---------------- */
+(function(){
+  let holdTimer = null, closeTimer = null;
+  const box = () => document.getElementById('batterySetup');
+  function closeBox(){ box().classList.remove('open'); clearTimeout(closeTimer); }
+  function openBox(){
+    if (!conn) return;
+    const text = conn.url + '?key=' + encodeURIComponent(conn.key) + '&action=battery&level=';
+    document.getElementById('batteryText').value = text;
+    document.getElementById('batteryMask').textContent = conn.url.replace(/(.{24}).*(.{12})$/, '$1…$2') + '?key=••••••&action=battery&level=';
+    document.getElementById('batteryCopy').textContent = 'Copy';
+    box().classList.add('open');
+    clearTimeout(closeTimer); closeTimer = setTimeout(closeBox, 60000);
+  }
+  async function copyText(){
+    const ta = document.getElementById('batteryText'), btn = document.getElementById('batteryCopy');
+    let ok = false;
+    try{ await navigator.clipboard.writeText(ta.value); ok = true; }catch(e){}
+    if (!ok){
+      try{ ta.style.left = '0'; ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); ok = document.execCommand('copy'); ta.style.left = '-9999px'; }catch(e){}
+    }
+    btn.textContent = ok ? 'Copied ✓' : 'Could not copy';
+  }
+  const start = (e) => { if (e.target.closest && e.target.closest('#clock')){ clearTimeout(holdTimer); holdTimer = setTimeout(openBox, 3000); } };
+  const stop = () => clearTimeout(holdTimer);
+  ['touchstart', 'mousedown'].forEach(ev => document.addEventListener(ev, start, { passive: true }));
+  ['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(ev => document.addEventListener(ev, stop, { passive: true }));
+  document.getElementById('batteryCopy').addEventListener('click', copyText);
+  document.getElementById('batteryClose').addEventListener('click', closeBox);
+})();
 
 /* ---------------- Nightly refresh ---------------- */
 // The display never reloads on its own, so once a night (about 4am) it reloads

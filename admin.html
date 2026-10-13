@@ -83,6 +83,8 @@
   .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;margin-left:4px}
   .tag.ok{background:rgba(127,194,138,.18);color:#9ad8a4}.tag.warn{background:rgba(230,180,80,.18);color:#f0c76e}.tag.bad{background:rgba(229,115,115,.18);color:#f19a9a}
   .refresh{margin:10px 0 12px;padding:9px;font-size:13px}
+  .power-banner{border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:14px;font-weight:600;background:rgba(229,115,115,.16);border:1px solid rgba(229,115,115,.45);color:#f4a9a9}
+  .power-banner small{display:block;font-weight:400;color:var(--dim);font-size:12px;margin-top:3px}
 </style>
 </head>
 <body>
@@ -111,6 +113,7 @@
       <div class="divider">DISPLAY STATUS</div>
       <div class="status-card">
         <div class="st-head"><span class="dot" id="stDot"></span><span class="st-title" id="stTitle">Checking…</span><span class="st-sub" id="stSub"></span></div>
+        <div class="power-banner" id="stPower" style="display:none"></div>
         <div class="st-grid">
           <div class="stat"><div class="n" id="stPhotos">–</div><div class="l">PHOTOS IN DRIVE</div><div class="s" id="stPhotosSub">showing in shuffle</div></div>
           <div class="stat"><div class="n" id="stTasks">–</div><div class="l">TASKS</div><div class="s">open on your list</div></div>
@@ -122,6 +125,7 @@
           <div class="st-row"><span>Last report</span><span id="stSeen">–</span></div>
           <div class="st-row"><span>Showing now</span><span id="stShowing">–</span></div>
           <div class="st-row"><span>Last data refresh</span><span id="stRefresh">–</span></div>
+          <div class="st-row"><span>Power</span><span id="stPowerRow">–</span></div>
           <div class="st-row"><span>Battery</span><span id="stBattery">–</span></div>
           <div class="st-row"><span>Relay errors</span><span id="stErrors">–</span></div>
         </div>
@@ -509,7 +513,7 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
 
 
 /* ---------------- Display status ---------------- */
-const LATEST_VERSION = 35;   // the display version that ships with this admin file
+const LATEST_VERSION = 36;   // the display version that ships with this admin file
 const MODULE_NAMES = { 1: 'Module 1 – Clock', 2: 'Module 2 – Photos', 3: 'Module 3 – Calendar', 4: 'Module 4 – Tasks', 5: 'Alert' };
 function el(id){ return document.getElementById(id); }
 function ago(ms){
@@ -559,9 +563,23 @@ function renderStatus(r){
     el('stRefresh').textContent = disp.dataAt ? clockText(disp.dataAt) : '–';
     el('stScreen').textContent = disp.w ? (disp.w > disp.h ? 'landscape' : 'portrait') + ' · ' + disp.w + '×' + disp.h : '–';
   }
-  if (bat){
-    const low = bat.level < 20 && bat.charging !== true;
-    el('stBattery').innerHTML = bat.level + '%' + (bat.charging ? ' · charging' : '') + ' · ' + ago(now - bat.seen) + (low ? ' <span class="tag bad">low</span>' : '');
+  // Power (plugged in / unplugged) is the main thing: it tells you Mum has unplugged the iPad.
+  const banner = el('stPower');
+  const unplugged = !!bat && bat.charging === false;
+  if (unplugged){
+    banner.style.display = 'block';
+    banner.innerHTML = '⚠ The iPad is unplugged<small>since ' + clockText(bat.chargingSince) + ' (' + ago(now - bat.chargingSince) + ')' + (bat.level != null ? ' · battery ' + bat.level + '%' : '') + '</small>';
+    el('stDot').className = 'dot bad';
+    el('stTitle').textContent = 'iPad unplugged';
+    el('stPowerRow').innerHTML = 'Unplugged <span class="tag bad">check charger</span> · since ' + clockText(bat.chargingSince);
+  } else {
+    banner.style.display = 'none';
+    if (bat && bat.charging === true) el('stPowerRow').innerHTML = 'Plugged in <span class="tag ok">charging</span> · since ' + clockText(bat.chargingSince);
+    else el('stPowerRow').textContent = 'Unknown — no charger report yet';
+  }
+  if (bat && bat.level != null){
+    const low = bat.level < 30 && bat.charging !== true;
+    el('stBattery').innerHTML = bat.level + '% · ' + ago(now - bat.levelSeen) + (low ? ' <span class="tag bad">low</span>' : '');
   } else {
     el('stBattery').textContent = 'No reading yet';
   }

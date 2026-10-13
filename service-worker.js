@@ -1,4 +1,4 @@
-const CACHE_NAME = 'homeglass-shell-v35';
+const CACHE_NAME = 'homeglass-shell-v36';
 const SHELL_FILES = [
   './',
   './display.html',
