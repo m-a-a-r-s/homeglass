@@ -34,8 +34,8 @@
     --weather-icon-scale: 5;
     --agenda-scale: 1.4;
     --cal-page-bg: #0a0c0a;
-    --cal-t-bg: rgba(159,184,154,.18); --cal-t-border: #6f8a6a; --cal-t-heading: #F5F2EA; --cal-t-line: #9FB89A; --cal-t-linesoft: rgba(159,184,154,.35); --cal-t-time: #9FB89A; --cal-t-title: #F5F2EA;
-    --cal-o-bg: rgba(245,242,234,.06); --cal-o-border: #343534; --cal-o-heading: #A9A79F; --cal-o-line: #4a4c49; --cal-o-linesoft: rgba(74,76,73,.55); --cal-o-time: #9FB89A; --cal-o-title: #F5F2EA;
+    --cal-t-bg: rgba(159,184,154,.18); --cal-t-border: #6f8a6a; --cal-t-bw: 2px; --cal-t-hbg: #9FB89A; --cal-t-day: #12160f; --cal-t-date: #12160f; --cal-t-line: #6f8a6a; --cal-t-time: #9FB89A; --cal-t-title: #F5F2EA;
+    --cal-o-bg: rgba(245,242,234,.06); --cal-o-border: #343534; --cal-o-bw: 2px; --cal-o-hbg: #3a3c39; --cal-o-day: #F5F2EA; --cal-o-date: #A9A79F; --cal-o-line: #4a4c49; --cal-o-time: #9FB89A; --cal-o-title: #F5F2EA;
     --module1-font: 'Fraunces', serif;
     --module1-scale: 1;
     --module1-text: #F5F2EA;
@@ -101,29 +101,34 @@
   }
   #calendarDays{display:flex; gap:calc(14px * var(--agenda-scale)); justify-content:center; align-items:stretch;}
   .cal-day-col{
-    --c-bg:var(--cal-o-bg); --c-border:var(--cal-o-border); --c-head:var(--cal-o-heading); --c-line:var(--cal-o-line);
-    --c-linesoft:var(--cal-o-linesoft); --c-time:var(--cal-o-time); --c-title:var(--cal-o-title);
-    flex:1; min-width:0;
+    --c-bg:var(--cal-o-bg); --c-border:var(--cal-o-border); --c-bw:var(--cal-o-bw); --c-hbg:var(--cal-o-hbg); --c-day:var(--cal-o-day); --c-date:var(--cal-o-date);
+    --c-line:var(--cal-o-line); --c-time:var(--cal-o-time); --c-title:var(--cal-o-title);
+    flex:1; min-width:0; overflow:hidden;
     background:var(--c-bg);
-    border:1px solid var(--c-border);
+    border:var(--c-bw) solid var(--c-border);
     border-radius:18px;
     padding:calc(16px * var(--agenda-scale)) calc(18px * var(--agenda-scale));
   }
   .cal-day-col.is-today{
-    --c-bg:var(--cal-t-bg); --c-border:var(--cal-t-border); --c-head:var(--cal-t-heading); --c-line:var(--cal-t-line);
-    --c-linesoft:var(--cal-t-linesoft); --c-time:var(--cal-t-time); --c-title:var(--cal-t-title);
+    --c-bg:var(--cal-t-bg); --c-border:var(--cal-t-border); --c-bw:var(--cal-t-bw); --c-hbg:var(--cal-t-hbg); --c-day:var(--cal-t-day); --c-date:var(--cal-t-date);
+    --c-line:var(--cal-t-line); --c-time:var(--cal-t-time); --c-title:var(--cal-t-title);
   }
-  .cal-day-heading{font-size:calc(13px * var(--agenda-scale)); font-weight:600; letter-spacing:.04em; color:var(--c-head); margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--c-line); white-space:nowrap;}
+  /* Header: a filled bar across the top of the box, day left, date right. */
+  .cal-day-heading{
+    display:flex; justify-content:space-between; align-items:baseline; gap:0.6em;
+    font-size:calc(16px * var(--agenda-scale)); font-weight:700; white-space:nowrap;
+    background:var(--c-hbg);
+    margin:calc(-16px * var(--agenda-scale)) calc(-18px * var(--agenda-scale)) calc(10px * var(--agenda-scale));
+    padding:calc(11px * var(--agenda-scale)) calc(18px * var(--agenda-scale));
+  }
+  .cal-day-name{color:var(--c-day); text-align:left;}
+  .cal-day-date{color:var(--c-date); text-align:right;}
   /* One day with 0-1 entries: a narrower, taller box instead of a wide one. */
   #agenda.sparse-one{width:min(56vh, 92vw);}
-  .cal-day-heading.is-today{font-weight:700;}
-  /* Time and event text sit a "double space" apart (0.55em of the title's size),
-     rather than the time sitting in a fixed-width column. */
-  .event{display:flex; align-items:baseline; gap:0.55em; font-size:calc(15px * var(--agenda-scale)); padding:11px 0; border-top:1px solid var(--c-linesoft);}
-  .event:first-of-type, .cal-day-heading + .event{border-top:none;}
-  .event .time{font-size:calc(13px * var(--agenda-scale)); color:var(--c-time); flex-shrink:0; white-space:nowrap;}
-  .event .title{font-size:calc(15px * var(--agenda-scale)); font-weight:500; min-width:0; flex:1; overflow-wrap:anywhere; color:var(--c-title);}
-  #calendarDays.compact .event{flex-direction:column; align-items:stretch; gap:2px;}
+  /* Each entry: time above the text, a line below. */
+  .event{display:flex; flex-direction:column; align-items:stretch; gap:3px; padding:11px 0; border-bottom:1px solid var(--c-line);}
+  .event .time{font-size:calc(13px * var(--agenda-scale)); color:var(--c-time);}
+  .event .title{font-size:calc(15px * var(--agenda-scale)); font-weight:500; min-width:0; overflow-wrap:anywhere; color:var(--c-title);}
   .agenda-msg{font-size:calc(14px * var(--agenda-scale)); color:var(--dim); padding:6px 0;}
   .agenda-empty{font-size:calc(14px * var(--agenda-scale)); color:var(--c-title); padding:6px 0;}
 
@@ -274,6 +279,13 @@ const FONT_STACKS = {
   librecaslon: "'Libre Caslon Text', serif"
 };
 
+// Number of days shown: 1, 2, 3 or 5 (an old 7-day setting counts as 5).
+function calDays(){
+  let n = parseInt(cfg.calendarDays, 10) || 1;
+  if (n > 5) n = 5;
+  return [1, 2, 3, 5].indexOf(n) >= 0 ? n : 1;
+}
+
 function hexToRgba(hex, a){
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex));
   if (!m) return hex;
@@ -287,19 +299,20 @@ function applyTheme(){
   root.setProperty('--accent', cfg.accentColor || '#9FB89A');
   root.setProperty('--cal-page-bg', cfg.calPageBg || '#0a0c0a');
   const calDefaults = {
-    Today: { Bg: '#9FB89A', Op: 0.18, Border: '#6f8a6a', Heading: '#F5F2EA', Line: '#9FB89A', Time: '#9FB89A', Title: '#F5F2EA' },
-    Other: { Bg: '#F5F2EA', Op: 0.06, Border: '#343534', Heading: '#A9A79F', Line: '#4a4c49', Time: '#9FB89A', Title: '#F5F2EA' }
+    Today: { Bg: '#9FB89A', Op: 0.18, Border: '#6f8a6a', BW: 2, HeaderBg: '#9FB89A', Day: '#12160f', Date: '#12160f', Line: '#6f8a6a', Time: '#9FB89A', Title: '#F5F2EA' },
+    Other: { Bg: '#F5F2EA', Op: 0.06, Border: '#343534', BW: 2, HeaderBg: '#3a3c39', Day: '#F5F2EA', Date: '#A9A79F', Line: '#4a4c49', Time: '#9FB89A', Title: '#F5F2EA' }
   };
   ['Today', 'Other'].forEach(box => {
     const p = box === 'Today' ? '--cal-t-' : '--cal-o-', df = calDefaults[box];
     const col = k => cfg['cal' + box + k + 'Color'] || df[k];
-    const rawOp = cfg['cal' + box + 'BgOpacity'];
-    const op = (rawOp !== undefined && rawOp !== '' && isFinite(Number(rawOp))) ? Number(rawOp) : df.Op;
-    root.setProperty(p + 'bg', hexToRgba(col('Bg'), op));
+    const num = (key, dflt) => { const v = cfg['cal' + box + key]; return (v !== undefined && v !== '' && isFinite(Number(v))) ? Number(v) : dflt; };
+    root.setProperty(p + 'bg', hexToRgba(col('Bg'), num('BgOpacity', df.Op)));
     root.setProperty(p + 'border', col('Border'));
-    root.setProperty(p + 'heading', col('Heading'));
+    root.setProperty(p + 'bw', num('BorderWidth', df.BW) + 'px');
+    root.setProperty(p + 'hbg', col('HeaderBg'));
+    root.setProperty(p + 'day', col('Day'));
+    root.setProperty(p + 'date', col('Date'));
     root.setProperty(p + 'line', col('Line'));
-    root.setProperty(p + 'linesoft', hexToRgba(col('Line'), 0.45));
     root.setProperty(p + 'time', col('Time'));
     root.setProperty(p + 'title', col('Title'));
   });
@@ -311,8 +324,8 @@ function applyTheme(){
   root.setProperty('--weather-scale', cfg.weatherScale || 1);
   root.setProperty('--weather-icon-scale', cfg.weatherIconScale || 5);
 
-  const days = parseInt(cfg.calendarDays, 10) || 1;
-  const DAY_SCALE = { 1: 1, 3: 0.85, 5: 0.7, 7: 0.55 };
+  const days = calDays();
+  const DAY_SCALE = { 1: 1, 2: 0.95, 3: 0.85, 5: 0.7 };
   root.setProperty('--agenda-scale', (cfg.agendaScale || 1.4) * (DAY_SCALE[days] || 1));
   root.setProperty('--agenda-width', days === 1 ? 'min(820px, 92vw)' : 'min(96vw, ' + (days * 340) + 'px)');
 
@@ -442,18 +455,18 @@ function renderWeather(){
 function localDateKey(d){
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
-function calendarHeading(date, isToday){
-  const dd = String(date.getDate()).padStart(2, '0');
-  const month = date.toLocaleDateString([], { month: 'short' });
-  if (isToday) return 'TODAY . ' + dd + '-' + month;
-  return date.toLocaleDateString([], { weekday: 'short' }).toUpperCase() + ' . ' + dd + '-' + month;
+function calendarDayName(date, isToday){
+  return isToday ? 'Today' : date.toLocaleDateString([], { weekday: 'long' });
+}
+function calendarDateText(date){
+  return String(date.getDate()).padStart(2, '0') + '-' + date.toLocaleDateString([], { month: 'short' });
 }
 
 let lastEvents = null;
 function renderCalendar(){
   const container = document.getElementById('calendarDays');
   if (!lastEvents){ return; }
-  const days = parseInt(cfg.calendarDays, 10) || 1;
+  const days = calDays();
   const now = new Date();
   const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dayList = [], byKey = {};
@@ -474,30 +487,34 @@ function renderCalendar(){
       if (ev.end && ev.end.date){ const e = ev.end.date.split('-').map(Number); end = new Date(e[0], e[1] - 1, e[2]); }
       for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)){
         const entry = byKey[localDateKey(d)];
-        if (entry) entry.items.push({ time: 'All day', title: ev.summary, allDay: true });
+        if (entry) entry.items.push({ time: '', title: ev.summary, allDay: true });
       }
     }
   });
-  container.classList.toggle('compact', days >= 5);
   container.textContent = '';
   dayList.forEach((entry, i) => {
     const col = document.createElement('div'); col.className = 'cal-day-col' + (i === 0 ? ' is-today' : '');
     col.dataset.count = entry.items.length;
     const head = document.createElement('div');
-    head.className = 'cal-day-heading' + (i === 0 ? ' is-today' : '');
-    head.textContent = calendarHeading(entry.date, i === 0);
+    head.className = 'cal-day-heading';
+    const dayName = document.createElement('span'); dayName.className = 'cal-day-name'; dayName.textContent = calendarDayName(entry.date, i === 0);
+    const dayDate = document.createElement('span'); dayDate.className = 'cal-day-date'; dayDate.textContent = calendarDateText(entry.date);
+    head.appendChild(dayName); head.appendChild(dayDate);
     col.appendChild(head);
     const items = entry.items.slice().sort((a, b) => (b.allDay ? 1 : 0) - (a.allDay ? 1 : 0));
     if (!items.length){
       const none = document.createElement('div'); none.className = 'agenda-empty';
-      none.textContent = i === 0 ? 'Nothing on the calendar today.' : 'Nothing scheduled.';
+      none.textContent = 'No appointments';
       col.appendChild(none);
     }
     items.forEach(ev => {
       const row = document.createElement('div'); row.className = 'event';
-      const t = document.createElement('div'); t.className = 'time'; t.textContent = ev.time;
+      if (ev.time){
+        const t = document.createElement('div'); t.className = 'time'; t.textContent = ev.time;
+        row.appendChild(t);
+      }
       const n = document.createElement('div'); n.className = 'title'; n.textContent = ev.title || 'Untitled event';
-      row.appendChild(t); row.appendChild(n); col.appendChild(row);
+      row.appendChild(n); col.appendChild(row);
     });
     container.appendChild(col);
   });
@@ -597,9 +614,10 @@ async function pullSettings(){
     const incoming = r.settings || {};
     const before = JSON.stringify(cfg);
     if (JSON.stringify(incoming) === before) return;
-    const daysChanged = String(incoming.calendarDays) !== String(cfg.calendarDays);
+    const prevDays = calDays();
     const cityChanged = incoming.city !== cfg.city || incoming.tempUnit !== cfg.tempUnit;
     cfg = incoming;
+    const daysChanged = calDays() !== prevDays;
     lsSet(SETTINGS_CACHE_KEY, JSON.stringify(cfg));
     applyTheme();
     tickClock();

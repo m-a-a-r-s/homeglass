@@ -216,9 +216,9 @@
         <label>Days to show</label>
         <select id="calendarDays">
           <option value="1">Today</option>
-          <option value="3">Today + 2</option>
-          <option value="5">Today + 4</option>
-          <option value="7">Today + 6</option>
+          <option value="2">2 days</option>
+          <option value="3">3 days</option>
+          <option value="5">5 days</option>
         </select>
       </div>
       <div class="field">
@@ -229,28 +229,40 @@
       <div class="field row-inline"><label>Page background</label><input type="color" id="calPageBg" value="#0a0c0a"></div>
 
       <div class="divider">TODAY BOX</div>
-      <div class="field row-inline"><label>Background color</label><input type="color" id="calTodayBgColor" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Box background color</label><input type="color" id="calTodayBgColor" value="#9FB89A"></div>
       <div class="field">
-        <label>Background fill (opacity)</label>
+        <label>Box background fill (opacity)</label>
         <div class="range-row"><input type="range" id="calTodayBgOpacity" min="0" max="1" step="0.02" value="0.18"><span class="val" id="calTodayBgOpacityVal"></span></div>
       </div>
-      <div class="field row-inline"><label>Outline</label><input type="color" id="calTodayBorderColor" value="#6f8a6a"></div>
-      <div class="field row-inline"><label>Heading text</label><input type="color" id="calTodayHeadingColor" value="#F5F2EA"></div>
-      <div class="field row-inline"><label>Line under heading</label><input type="color" id="calTodayLineColor" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Outline color</label><input type="color" id="calTodayBorderColor" value="#6f8a6a"></div>
+      <div class="field">
+        <label>Outline thickness</label>
+        <div class="range-row"><input type="range" id="calTodayBorderWidth" min="0" max="8" step="1" value="2"><span class="val" id="calTodayBorderWidthVal"></span></div>
+      </div>
+      <div class="field row-inline"><label>Header box color</label><input type="color" id="calTodayHeaderBgColor" value="#9FB89A"></div>
+      <div class="field row-inline"><label>Header day (left)</label><input type="color" id="calTodayDayColor" value="#12160f"></div>
+      <div class="field row-inline"><label>Header date (right)</label><input type="color" id="calTodayDateColor" value="#12160f"></div>
       <div class="field row-inline"><label>Event time</label><input type="color" id="calTodayTimeColor" value="#9FB89A"></div>
-      <div class="field row-inline"><label>Event title / "nothing scheduled"</label><input type="color" id="calTodayTitleColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Event title / "No appointments"</label><input type="color" id="calTodayTitleColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Line below each event</label><input type="color" id="calTodayLineColor" value="#6f8a6a"></div>
 
       <div class="divider">OTHER DAYS</div>
-      <div class="field row-inline"><label>Background color</label><input type="color" id="calOtherBgColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Box background color</label><input type="color" id="calOtherBgColor" value="#F5F2EA"></div>
       <div class="field">
-        <label>Background fill (opacity)</label>
+        <label>Box background fill (opacity)</label>
         <div class="range-row"><input type="range" id="calOtherBgOpacity" min="0" max="1" step="0.02" value="0.06"><span class="val" id="calOtherBgOpacityVal"></span></div>
       </div>
-      <div class="field row-inline"><label>Outline</label><input type="color" id="calOtherBorderColor" value="#343534"></div>
-      <div class="field row-inline"><label>Heading text</label><input type="color" id="calOtherHeadingColor" value="#A9A79F"></div>
-      <div class="field row-inline"><label>Line under heading</label><input type="color" id="calOtherLineColor" value="#4a4c49"></div>
+      <div class="field row-inline"><label>Outline color</label><input type="color" id="calOtherBorderColor" value="#343534"></div>
+      <div class="field">
+        <label>Outline thickness</label>
+        <div class="range-row"><input type="range" id="calOtherBorderWidth" min="0" max="8" step="1" value="2"><span class="val" id="calOtherBorderWidthVal"></span></div>
+      </div>
+      <div class="field row-inline"><label>Header box color</label><input type="color" id="calOtherHeaderBgColor" value="#3a3c39"></div>
+      <div class="field row-inline"><label>Header day (left)</label><input type="color" id="calOtherDayColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Header date (right)</label><input type="color" id="calOtherDateColor" value="#A9A79F"></div>
       <div class="field row-inline"><label>Event time</label><input type="color" id="calOtherTimeColor" value="#9FB89A"></div>
-      <div class="field row-inline"><label>Event title / "nothing scheduled"</label><input type="color" id="calOtherTitleColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Event title / "No appointments"</label><input type="color" id="calOtherTitleColor" value="#F5F2EA"></div>
+      <div class="field row-inline"><label>Line below each event</label><input type="color" id="calOtherLineColor" value="#4a4c49"></div>
 
       <div class="divider">MODULE 4 — TASKS</div>
       <div class="field">
@@ -367,18 +379,21 @@ function buildScheduleUI(){
 
 const RANGE_FIELDS = ['calTodayBgOpacity', 'calOtherBgOpacity', 'module1Scale', 'timeScale', 'weatherScale', 'weatherIconScale', 'agendaScale', 'taskScale', 'alertScale'];
 const INTERVAL_FIELDS = ['photoInterval', 'taskInterval'];
+const PX_FIELDS = ['calTodayBorderWidth', 'calOtherBorderWidth'];
+function applyPxDisplay(id){ document.getElementById(id + 'Val').textContent = document.getElementById(id).value + ' px'; }
 const ALL_FIELDS = [
   'city',
   'module1Position', 'module1BgColor', 'module1Font',
   'module1TextColor', 'module1Bold', 'module1TimeFormat', 'module1ShowSeconds',
   'module2Position', 'weatherPosition',
   'timeFormat', 'showSeconds', 'dateFormat', 'tempUnit',
-  'font', 'calPageBg', 'calTodayBgColor', 'calTodayBorderColor', 'calTodayHeadingColor', 'calTodayLineColor', 'calTodayTimeColor', 'calTodayTitleColor', 'calOtherBgColor', 'calOtherBorderColor', 'calOtherHeadingColor', 'calOtherLineColor', 'calOtherTimeColor', 'calOtherTitleColor',
+  'font', 'calPageBg', 'calTodayBgColor', 'calTodayBorderColor', 'calTodayHeaderBgColor', 'calTodayDayColor', 'calTodayDateColor', 'calTodayLineColor', 'calTodayTimeColor', 'calTodayTitleColor', 'calOtherBgColor', 'calOtherBorderColor', 'calOtherHeaderBgColor', 'calOtherDayColor', 'calOtherDateColor', 'calOtherLineColor', 'calOtherTimeColor', 'calOtherTitleColor',
   'calendarDays',
   'taskFont', 'taskBgColor', 'taskTextColor',
   'alertEnabled', 'alertFont', 'alertBgColor', 'alertTextColor',
   ...RANGE_FIELDS,
-  ...INTERVAL_FIELDS
+  ...INTERVAL_FIELDS,
+  ...PX_FIELDS
 ];
 
 function formatInterval(seconds){
@@ -455,6 +470,7 @@ function showForm(data){
   if (Array.isArray(data.schedule) && data.schedule.length === 24) currentSchedule = data.schedule;
   buildScheduleUI();
 
+  if (Number(data.calendarDays) > 5) data.calendarDays = 5;
   ALL_FIELDS.forEach(key => {
     const el = document.getElementById(key);
     if (!el || data[key] === undefined) return;
@@ -462,6 +478,7 @@ function showForm(data){
     else el.value = data[key];
     if (RANGE_FIELDS.includes(key)) applyRangeDisplay(key);
     if (INTERVAL_FIELDS.includes(key)) applyIntervalDisplay(key);
+    if (PX_FIELDS.includes(key)) applyPxDisplay(key);
   });
   document.getElementById('alertMessageInput').innerHTML = data.alertMessageHtml || '';
 
@@ -469,6 +486,7 @@ function showForm(data){
     formBound = true;
     RANGE_FIELDS.forEach(key => document.getElementById(key).addEventListener('input', () => applyRangeDisplay(key)));
     INTERVAL_FIELDS.forEach(key => document.getElementById(key).addEventListener('input', () => applyIntervalDisplay(key)));
+    PX_FIELDS.forEach(key => document.getElementById(key).addEventListener('input', () => applyPxDisplay(key)));
     document.getElementById('module2Position').addEventListener('change', refreshPositionOptionAvailability);
     document.getElementById('weatherPosition').addEventListener('change', refreshPositionOptionAvailability);
     document.querySelectorAll('.rte-toolbar button').forEach(btn => {
@@ -482,6 +500,7 @@ function showForm(data){
   RANGE_FIELDS.concat(INTERVAL_FIELDS).forEach(key => {
     if (data[key] === undefined) { RANGE_FIELDS.includes(key) ? applyRangeDisplay(key) : applyIntervalDisplay(key); }
   });
+  PX_FIELDS.forEach(key => applyPxDisplay(key));
   refreshPositionOptionAvailability();
 
   document.getElementById('signInSection').style.display = 'none';
@@ -498,7 +517,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     if (!el) return;
     if (el.type === 'checkbox') payload[key] = el.checked;
     else if (RANGE_FIELDS.includes(key)) payload[key] = parseFloat(el.value);
-    else if (INTERVAL_FIELDS.includes(key)) payload[key] = parseInt(el.value, 10);
+    else if (INTERVAL_FIELDS.includes(key) || PX_FIELDS.includes(key)) payload[key] = parseInt(el.value, 10);
     else payload[key] = el.value;
   });
   try{
